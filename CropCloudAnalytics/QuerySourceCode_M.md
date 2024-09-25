@@ -110,7 +110,9 @@ This section of the code performs a series of filtering and transformation steps
     // Filter and Merge Areas Data
     #"Merged Queries - AÑADIR AREAS" = Table.NestedJoin(#"Filas filtradas", {"ID.AREA"}, Areas, {"ID.AREA"}, "AREAS", JoinKind.LeftOuter),
     #"Expand new merged table" = Table.ExpandTableColumn(#"Merged Queries - AÑADIR AREAS", "AREAS", {"Campaña", "Superficie_ha"}, {"Campaña", "Superficie_ha"}),
-
+```
+The provided code performs data manipulation within a Power Query environment, specifically focusing on filtering and merging area-related data. Initially, it executes a left outer join between a filtered table, referenced as **#"Filas filtradas"**, and an external table named Areas, matching on the column **ID.AREA**. This operation results in a new column called "AREAS" that contains related records from the Areas table. Subsequently, the code expands this newly merged table by extracting two specific fields **"Campaña"** and **"Superficie_ha"** from the **"AREAS"** column, effectively incorporating these attributes into the main table structure. This process enhances the dataset with additional information relevant to each area, facilitating further analysis.
+```vs
     // Transform Data
     #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Expand new merged table",{{"PROYECTO", "PROYECTO_1"},{"Campaña", "Campaña_1"}}),
     #"Columnas con nombre cambiado1.1"= Table.AddColumn(#"Columnas con nombre cambiado1", "PROYECTO", each if [PROYECTO_1] = null then [Proyecto_0] else [PROYECTO_1]),
@@ -153,7 +155,9 @@ This section of the code performs a series of filtering and transformation steps
     #"Columnas con nombre cambiado4" = Table.RenameColumns(#"Primeros caracteres insertados",{{"Primeros caracteres", "ID.FINCA"}}),
     #"Texto extraído después del delimitador" = Table.TransformColumns(#"Columnas con nombre cambiado4", {{"SUBGRUPO", each Text.AfterDelimiter(_, "- "), type text}}),
     #"Columna duplicada20" = Table.DuplicateColumn(#"Texto extraído después del delimitador", "ID.PROYECTO", "ID.PROYECTO - Copia"),
-
+```
+The provided code implements a series of transformations to manipulate a table in Power Query, enhancing its structure and preparing it for further analysis. Initially, it renames columns for clarity, changing **"PROYECTO"** to **"PROYECTO_1"** and **"Campaña"** to **"Campaña_1"**. Following this, new columns are introduced: **"PROYECTO"** is conditionally filled based on the existence of values in **"PROYECTO_1"** or defaults to **"Proyecto_0"** if null, and a similar operation is performed for **"Campaña"**. The subsequent steps remove unnecessary columns that are no longer needed, such as **"Proyecto_0"** and the previously renamed columns, optimizing the dataset's size. Date formatting is adjusted for the **"FECHAIMPUTACION"** column, and numeric conversions are applied to relevant columns like **"Superficie_ha"** and **"IMPORTEAPLICADO"**. Additionally, a new column, **"IMPORTE.señal"**, is created to signal whether the type group is an expense or income, multiplying this value by **"IMPORTEAPLICADO"** to create a new adjusted column. The original **"IMPORTEAPLICADO"** is then removed, and its adjusted version is renamed accordingly. New calculations are introduced to derive **"Importe_ha"** as a per-area value, alongside duplicating and renaming columns to retain original data and extract specific segments of information. The process also includes cleaning and formatting operations, such as replacing empty and null values with zero, ensuring data integrity before selecting the final set of columns for analysis. Finally, the code reorders columns and performs additional renaming to finalize the structure, creating a well-organized dataset ready for reporting or further data processing tasks.
+```vs
 // Define AreaResponsabilidad
     #"Crear AREA RESPONSABILIDAD0" = Table.TransformColumns(#"Columna duplicada20", {{"ID.PROYECTO - Copia", each Text.Middle(_, 1, 3), type text}}),
     #"Columnas con nombre cambiado80" = Table.RenameColumns(#"Crear AREA RESPONSABILIDAD0",{{"ID.PROYECTO - Copia", "AreaResponsabilidad"}}),
@@ -169,6 +173,9 @@ This section of the code performs a series of filtering and transformation steps
 in
     #"Columnas con nombre cambiado7"
 ```
+This chunk of code performs a series of transformations to enhance a dataset related to area responsibilities. Initially, it extracts a substring from the **"ID.PROYECTO** - Copia" column, retaining the first three characters, and renames this column to **"AreaResponsabilidad"**. The type of this new column is then changed to Int64, indicating it will hold integer values. Subsequently, a conditional column named "Personalizado" is added, which categorizes the area responsibility based on predefined numerical codes into meaningful labels such as **"CULTIVOS EXTENSIVOS"** and **"AGUA RIEGO"** providing clearer context for analysis.
+
+The code then renames the column **"AreaResponsabilidad"** to **"ID.AreaResponsabilidad"** and reverts the name back to **"AreaResponsabilidad"** for clarity. The data type for this column is changed to text to accommodate the new string values. The table is filtered to retain only those rows where **"AreaResponsabilidad"** matches specific categories related to agricultural activities. A new column, **"CampañaOrder"**, is created by extracting the first two characters from the **"Campaña"** column, which is subsequently converted to Int64 for numerical sorting purposes. Finally, the column **"CANTIDADALBARANVENTA"** is renamed to **"Cantidad_PRODUCTO"** to standardize terminology across the dataset. This structured approach not only improves data readability but also sets the stage for effective analysis in subsequent operations.
 
 ## Load Queries
 Include the queries responsible for loading the transformed data into the appropriate destinations (e.g., databases, data warehouses).
