@@ -86,6 +86,7 @@ let
     REPORTING = Origen{[Name="REPORTING"]}[Data],
     dbo_ANALITICA_CULTIVO = REPORTING{[Schema="dbo",Item="ANALITICA_CULTIVO"]}[Data],
 ```
+This code connects to a SQL Server instance named **"WIN-19AB\ERP"** and retrieves data from the **"REPORTING"** database. Within this database, it specifically accesses a table called **"ANALITICA_CULTIVO"** under the "dbo" schema.
 
 ```vs
     // Filter and Transform Data
@@ -104,7 +105,7 @@ let
     #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Texto insertado después del delimitador",{{"Texto después del delimitador", "Campaña_0"}}),
     #"Filas filtradas" = Table.SelectRows(#"Columnas con nombre cambiado2", each ([CODIGOCENTRO] = "001")),
 ```
-
+This section of the code performs a series of filtering and transformation steps on the data from the **"ANALITICA_CULTIVO"** table. First, it filters out any rows where the EjercicioAnalitico column contains null values, ensuring that only valid data is processed. Following this, a new column named Campaña is added, which contains the same values as **EjercicioAnalitico**. The next step extracts text before the first space in the EjercicioAnalitico column and stores this in a temporary column. Subsequently, the temporary **Campaña** column is removed to streamline the dataset. The extracted column is then renamed to Campaña to reflect its intended use. Next, the code extracts text before the first " - " in the **PROYECTO** column, creating another temporary column. This extracted text, along with the **Campaña** values, is then combined into a new column called **ID.AREA**, using a colon (:) as the delimiter. The process continues with the extraction of text before the first colon in the **ID.AREA** column, which is stored in another temporary column. Finally, this column is renamed to **Proyecto_0**, thus completing the transformation sequence, while additional filtering is applied to retain only those rows where the **CODIGOCENTRO** column equals '001' (i.e., agricultural analytical projects, as '002' corresponds to the tourism business by Abecera, S.L.).
 ```vs
     // Filter and Merge Areas Data
     #"Merged Queries - AÑADIR AREAS" = Table.NestedJoin(#"Filas filtradas", {"ID.AREA"}, Areas, {"ID.AREA"}, "AREAS", JoinKind.LeftOuter),
