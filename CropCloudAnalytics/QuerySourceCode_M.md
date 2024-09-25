@@ -194,7 +194,7 @@ let
 in
     // Output the final table
     #"Removed Column [TIPOGRUPO]"
-
+```
 
 ## Load Queries
 Include the queries responsible for loading the transformed data into the appropriate destinations (e.g., databases, data warehouses).
