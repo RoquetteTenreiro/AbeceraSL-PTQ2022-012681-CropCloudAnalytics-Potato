@@ -12,12 +12,14 @@ This document contains the Power Query M source code utilized in the CropCloudAn
 
 ## Overview of CropCloudAnalytics Data Storage and Structuring
 
-There are six different clusters of queries integrated through a star schema. A star schema is a type of database schema commonly used in data warehousing and business intelligence. It consists of a central fact table surrounded by one or more dimension tables. The key characteristics of a star schema include:
+At Abecera Agricultural Company, we utilize a star schema to analyze farming operations, enabling us to gain valuable insights from our data. Within this context, the key components of our star schema include:
 
-- **Fact Table**: This table contains the quantitative data (measures) for analysis, such as sales amounts or quantities sold. It typically includes keys that reference the associated dimension tables.
-- **Dimension Tables**: These tables contain descriptive attributes related to the facts, such as time, product, customer, and geography. Each dimension table is linked to the fact table through a foreign key.
-- **Simplicity**: The star schema is designed for simplicity, making it easy to understand and query. The straightforward structure allows for fast query performance and efficient data retrieval.
-- **Denormalization**: Dimension tables are often denormalized, meaning they may contain redundant data to reduce the complexity of queries and improve performance.
+- **Fact Table**: This central table contains quantitative data relevant to our farming operations, such as crop yields, irrigation costs, and labor hours. It serves as the primary source for analysis and includes keys that reference the associated dimension tables.
+- **Dimension Tables**: These tables provide descriptive attributes related to the facts, including planting dates, crop varieties, farm locations, and weather conditions. Each dimension table connects to the fact table through a foreign key, allowing for detailed analysis from multiple perspectives.
+- **Simplicity**: The star schema is designed for ease of use, making it straightforward for our team to understand and query the data. This simplified structure enhances query performance and accelerates data retrieval, empowering us to make timely decisions.
+- **Denormalization**: To optimize performance and reduce query complexity, our dimension tables are often denormalized. This means they may contain redundant data, streamlining the querying process and enhancing overall efficiency in our data analysis.
+
+The approach features six distinct clusters of queries, facilitating comprehensive analysis across various dimensions.
 
 The fact table is **ANALITICA ERP**, which corresponds to the analytical output table exported through SQL from the Hispatec ERP.agro system. This step is programmed in SQL to export a table that is over 200 columns wide (each column corresponding to a different field) into the Power Query interface.
 
