@@ -79,13 +79,15 @@ The following M script implements an **ETL** (Extract, Transform, Load) process 
 
 Subsequent transformations include calculating the **IMPORTE.APLICADO** based on specified conditions and creating derived metrics like **Importe_ha** which determines the amount by area (this column records all facts associated with resource flows per area). The final output is a cleaned and structured table ready for reporting, with unnecessary columns removed and relevant types assigned for effective data analysis.
 
-```fs
+```vs
 let
     // Source
     Origen = Sql.Databases("WIN-19AB\ERP"),
     REPORTING = Origen{[Name="REPORTING"]}[Data],
     dbo_ANALITICA_CULTIVO = REPORTING{[Schema="dbo",Item="ANALITICA_CULTIVO"]}[Data],
+```
 
+```vs
     // Filter and Transform Data
     /*#"PROYECTOS - FASE 1" = Table.SelectRows(dbo_ANALITICA_CULTIVO, each ([PROYECTO] = "F923000001 - ESPINACAS GELAGRI" or [PROYECTO] = "F925000006 - ALMENDROS 2016")),
     #"Reject NULL rows [EjercicioAnalitico]" = Table.SelectRows(#"PROYECTOS - FASE 1", each ([EjercicioAnalitico] <> null)),*/
@@ -101,7 +103,9 @@ let
     #"Texto insertado después del delimitador" = Table.AddColumn(#"Columnas con nombre cambiado", "Texto después del delimitador", each Text.AfterDelimiter([ID.AREA], ":"), type text),
     #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Texto insertado después del delimitador",{{"Texto después del delimitador", "Campaña_0"}}),
     #"Filas filtradas" = Table.SelectRows(#"Columnas con nombre cambiado2", each ([CODIGOCENTRO] = "001")),
+```
 
+```vs
     // Filter and Merge Areas Data
     #"Merged Queries - AÑADIR AREAS" = Table.NestedJoin(#"Filas filtradas", {"ID.AREA"}, Areas, {"ID.AREA"}, "AREAS", JoinKind.LeftOuter),
     #"Expand new merged table" = Table.ExpandTableColumn(#"Merged Queries - AÑADIR AREAS", "AREAS", {"Campaña", "Superficie_ha"}, {"Campaña", "Superficie_ha"}),
