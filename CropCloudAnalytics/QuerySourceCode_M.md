@@ -1,6 +1,6 @@
 # Query Source Code for CropCloudAnalytics by SISTAGRO-Cortijo La Reina, Abecera SL
 
-This document contains the Power Query M source code utilized in the CropCloud Analytics platform. It serves as a comprehensive repository for all queries related to data extraction, transformation, and loading processes within the application. The structured format allows for easy navigation and reference for developers and data analysts involved in maintaining and enhancing the CropCloud Analytics system.
+This document contains the Power Query M source code utilized in the CropCloudAnalytics model. It serves as a comprehensive repository for all queries related to data extraction, transformation, and loading processes within the application. The structured format allows for easy navigation and reference for developers and data analysts involved in maintaining and enhancing the CropCloudAnalytics system.
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -10,8 +10,37 @@ This document contains the Power Query M source code utilized in the CropCloud A
 5. [Usage Examples](#usage-examples)
 6. [Notes and Comments](#notes-and-comments)
 
-## Overview
-Provide a brief description of the purpose of the queries included in this document, highlighting the key functionalities they enable within CropCloud Analytics.
+## Overview of CropCloudAnalytics Data Storage and Structuring
+
+There are six different clusters of queries integrated through a star schema. A star schema is a type of database schema commonly used in data warehousing and business intelligence. It consists of a central fact table surrounded by one or more dimension tables. The key characteristics of a star schema include:
+
+- **Fact Table**: This table contains the quantitative data (measures) for analysis, such as sales amounts or quantities sold. It typically includes keys that reference the associated dimension tables.
+- **Dimension Tables**: These tables contain descriptive attributes related to the facts, such as time, product, customer, and geography. Each dimension table is linked to the fact table through a foreign key.
+- **Simplicity**: The star schema is designed for simplicity, making it easy to understand and query. The straightforward structure allows for fast query performance and efficient data retrieval.
+- **Denormalization**: Dimension tables are often denormalized, meaning they may contain redundant data to reduce the complexity of queries and improve performance.
+
+The fact table is **ANALITICA ERP**, which corresponds to the analytical output table exported through SQL from the Hispatec ERP.agro system. This step is programmed in SQL to export a table that is over 200 columns wide (each column corresponding to a different field) into the Power Query interface.
+
+**ANALITICA_ERP** includes all the main analytical accounting entries of the parent company, where a record is kept of all accounting entries following a specific structure that defines expenses and income by analytical project. An analytical project can be an investment account, a crop, or an expense account for amortizations. The concept of an analytical project is fundamental to the company's structure as it defines the basic integrated unit of all accounting events, referred to in BI terminology as facts. Therefore, this table is known in BI terms as the fact table; it is the center of the solar system of data within the company, around which all other tables relate to one another.
+
+One of the main advancements in agriculture promoted by the group is digitalization. Since 2019, the company has implemented an ERP system, which has enabled the centralized digital storage of information on a large scale. This includes everything from field reports, which are records of operations specifying the resources used by each productive unit (farm, crop, parcel, sector), to billing, inventories, investments, machinery, subsidies, and other key aspects of the activity.
+
+Internally, the system is organized around a central concept called **Analytical Project**, which corresponds to the basic unit for allocating expenses and income, consumptions, and products produced. An Analytical Project is generally a productive activity with associated expenses and income, although it can also be a unit of expenses without associated income (maintenance, investments, purchases, etc.). This concept allows for the assignment of operations related to cash flows (expenses and income) that influence the company's accounting and facilitates the productive use of information, both for describing processes and identifying behavioral patterns, as well as for defining operational control systems. The Analytical Project is essential for the functioning of the data system at Cortijo La Reina and constitutes the foundation upon which information related to activity management is organized. From an agronomic perspective, the use of this information has great potential, which is why we have defined its analysis and development as a key pillar in the company's strategy.
+
+From the perspective of data storage and structuring, the group has benefited from the ERP Agro solution by Hispatec. However, centralizing all data on a single platform presents a critical challenge: promoting the ability to leverage this information operationally, in real-time, without incurring excessive costs related to data management and analysis.
+
+Another crucial aspect is that analytics in a company like the Cortijo La Reina group must be treated as an analytical project in itself. This implies that it should have a clear margin of opportunity for value creation, which is measurable and objectively identifiable. In other words, analytics should be governed by a relationship between expenses and income, where the actual viability of the system is justified by revenue generation or cost reduction, thereby improving the company's performance. Otherwise, there is a risk of incurring significant efforts in documentation, storage, analysis, and reporting that do not translate into progress, but rather result in increased expenses and unnecessary time consumption.
+
+To address this issue, the integration of ERP data with a Business Intelligence (BI) tool that incorporates ETL (Extract, Transform, Load) solutions has been identified as a key strategy. This integration enables automation in handling information, reducing the need to allocate substantial resources in terms of time and specialized knowledge each time a control task is required for a specific project.
+
+Furthermore, a fundamental aspect is the ability to hierarchize information, allowing for scalable analysis that addresses both specific and general aspects of our operations. For example, the ability to track and analyze data from the use of a phytosanitary product in a specific field to a broader level, such as an entire farm or even the entire company, provides a multiscalar perspective in decision-making. This enables detailed management of analytics, such as determining the exact dosage of treatment applied in previous campaigns, as well as evaluating which farm or entity optimizes the use of phytosanitary products and the implications on the operational results of the company.
+
+
+
+
+
+----
+
 
 ## Data Sources
 List and describe the various data sources from which the queries extract data, including any relevant connection details.
