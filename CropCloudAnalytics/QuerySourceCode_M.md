@@ -73,7 +73,7 @@ Apart from the first cluster, the **Fact Table**, where a single query is stored
 - DAX
 - Roles
 
-## Transformations
+## Data Transformations
 
 The following M script implements an **ETL** (Extract, Transform, Load) process for the **ANALITICA_ERP** table within the SQL **REPORTING** database of the ANALITICA_ERP system. It begins by connecting to the SQL database and retrieving the relevant data while filtering out rows with null values in the 'EjercicioAnalitico' column (i.e., accounting period). The script then enriches the data by adding new columns, such as Campaña (i.e., the agricultural accounting period refering to the timeframe used for financial reporting and analysis, specifically aligned with the crop season) and ID.AREA (i.e., the elementary key is generated to link the fact table with the AREAS table. This elementary key is essential for connecting an analytical project to a specific crop field area, as it relates the analytical project - or crop - to the area by considering the year. Since analytical project areas change annually due to annual crops and crop rotations, this temporal aspect is crucial), which are derived from existing fields, facilitating easier analysis. 
 
