@@ -79,10 +79,8 @@ The following M script implements an **ETL** (Extract, Transform, Load) process 
 
 Subsequent transformations include calculating the **IMPORTE.APLICADO** based on specified conditions and creating derived metrics like **Importe_ha** which determines the amount by area (this column records all facts associated with resource flows per area). The final output is a cleaned and structured table ready for reporting, with unnecessary columns removed and relevant types assigned for effective data analysis.
 
-```powerquery
-
+```pq
 let
-
     // Source
     Origen = Sql.Databases("WIN-19AB\ERP"),
     REPORTING = Origen{[Name="REPORTING"]}[Data],
@@ -151,7 +149,7 @@ let
     #"Texto extraído después del delimitador" = Table.TransformColumns(#"Columnas con nombre cambiado4", {{"SUBGRUPO", each Text.AfterDelimiter(_, "- "), type text}}),
     #"Columna duplicada20" = Table.DuplicateColumn(#"Texto extraído después del delimitador", "ID.PROYECTO", "ID.PROYECTO - Copia"),
 
-    // Define AreaResponsabilidad
+// Define AreaResponsabilidad
     #"Crear AREA RESPONSABILIDAD0" = Table.TransformColumns(#"Columna duplicada20", {{"ID.PROYECTO - Copia", each Text.Middle(_, 1, 3), type text}}),
     #"Columnas con nombre cambiado80" = Table.RenameColumns(#"Crear AREA RESPONSABILIDAD0",{{"ID.PROYECTO - Copia", "AreaResponsabilidad"}}),
     #"Tipo cambiado10" = Table.TransformColumnTypes(#"Columnas con nombre cambiado80",{{"AreaResponsabilidad", Int64.Type}}),
@@ -165,7 +163,6 @@ let
     #"Columnas con nombre cambiado7" = Table.RenameColumns(#"Tipo cambiado1",{{"CANTIDADALBARANVENTA", "Cantidad_PRODUCTO"}})
 in
     #"Columnas con nombre cambiado7"
-
 ```
 
 ## Load Queries
