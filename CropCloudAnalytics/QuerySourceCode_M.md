@@ -79,7 +79,7 @@ The following M script implements an **ETL** (Extract, Transform, Load) process 
 
 Subsequent transformations include calculating the **IMPORTE.APLICADO** based on specified conditions and creating derived metrics like **Importe_ha** which determines the amount by area (this column records all facts associated with resource flows per area). The final output is a cleaned and structured table ready for reporting, with unnecessary columns removed and relevant types assigned for effective data analysis.
 
-```PowerQuery
+```powerquery
 
 <span style="color: #1d593f;">let</span>
     <span style="color: #1d593f;">// Source: Connect to the SQL database</span>
