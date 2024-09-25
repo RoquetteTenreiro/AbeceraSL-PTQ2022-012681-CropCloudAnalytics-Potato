@@ -6,8 +6,8 @@ This document contains the Power Query M source code utilized in the CropCloudAn
 1. [Overview of CropCloudAnalytics](#overview-of-cropcloudanalytics)
 2. [Data Sources](#data-sources)
 3. [Data Transformations](#data-transformations)
-4. [Load Queries](#load-queries)
-5. [Usage Examples](#usage-examples)
+4. [Other Queries](#other-queries)
+5. [DAX code](#dax-code)
 6. [Notes and Comments](#notes-and-comments)
 
 ## Overview of CropCloudAnalytics Data Storage and Structuring
@@ -74,6 +74,8 @@ Apart from the first cluster, the **Fact Table**, where a single query is stored
 - Roles
 
 ## Data Transformations
+
+### ANALITICA_ERP
 
 The following M script implements an **ETL** (Extract, Transform, Load) process for the **ANALITICA_ERP** table within the SQL **REPORTING** database of the ANALITICA_ERP system. It begins by connecting to the SQL database and retrieving the relevant data while filtering out rows with null values in the 'EjercicioAnalitico' column (i.e., accounting period). The script then enriches the data by adding new columns, such as Campaña (i.e., the agricultural accounting period refering to the timeframe used for financial reporting and analysis, specifically aligned with the crop season) and ID.AREA (i.e., the elementary key is generated to link the fact table with the AREAS table. This elementary key is essential for connecting an analytical project to a specific crop field area, as it relates the analytical project - or crop - to the area by considering the year. Since analytical project areas change annually due to annual crops and crop rotations, this temporal aspect is crucial), which are derived from existing fields, facilitating easier analysis. 
 
@@ -177,10 +179,100 @@ This chunk of code performs a series of transformations to enhance a dataset rel
 
 The code then renames the column **"AreaResponsabilidad"** to **"ID.AreaResponsabilidad"** and reverts the name back to **"AreaResponsabilidad"** for clarity. The data type for this column is changed to text to accommodate the new string values. The table is filtered to retain only those rows where **"AreaResponsabilidad"** matches specific categories related to agricultural activities. A new column, **"CampañaOrder"**, is created by extracting the first two characters from the **"Campaña"** column, which is subsequently converted to Int64 for numerical sorting purposes. Finally, the column **"CANTIDADALBARANVENTA"** is renamed to **"Cantidad_PRODUCTO"** to standardize terminology across the dataset. This structured approach not only improves data readability but also sets the stage for effective analysis in subsequent operations.
 
-## Load Queries
+### ERP Tables Satellite
+
+**PARTES_ERP**
+```vs
+let
+    Origen = Sql.Databases("WIN-19AB\ERP"),
+    REPORTING = Origen{[Name="REPORTING"]}[Data],
+    dbo_PartesProduccion = REPORTING{[Schema="dbo",Item="PartesProduccion"]}[Data],
+    #"Importe reemplazado" = Table.ReplaceValue(dbo_PartesProduccion,null,0,Replacer.ReplaceValue,{"Importe Transaccional"}),
+    #"Personalizada agregada1" = Table.AddColumn(#"Importe reemplazado", "IMPORTE", each [ImportePlusFunc]+[Importe Transaccional]),
+    #"Crear ID.PARTEProduccion" = Table.RenameColumns(#"Personalizada agregada1",{{"Id_ParteProduccion", "ID.PARTEProduccion"}}),
+    #"Filas agrupadas" = Table.Group(#"Crear ID.PARTEProduccion", {"ID.PARTEProduccion", "Nombre Actividad Producción", "Nombre Artículo", "Cantidad", "Código Unidad Medida", "Precio el Artículo", "Nombre Unidad Medida", "Identificador Cultivo", "Descripción Cultivo", "Nombre Familia Artículo", "CampanyaParteProduccionCodigo"}, {{"Importe", each List.Sum([IMPORTE]), type number}}),
+    #"Filas filtradas" = Table.SelectRows(#"Filas agrupadas", each true),
+    #"Valor reemplazado1" = Table.ReplaceValue(#"Filas filtradas",null,0,Replacer.ReplaceValue,{"Importe"}),
+    #"Personalizada agregada" = Table.AddColumn(#"Valor reemplazado1", "Valor", each [Precio el Artículo]*[Cantidad]),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Personalizada agregada",null,"MANO DE OBRA",Replacer.ReplaceValue,{"Nombre Artículo"}),
+    #"Columna condicional agregada" = Table.AddColumn(#"Valor reemplazado", "Importe_PARTE", each if [Importe] = 0 then [Valor] else [Importe]),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Columna condicional agregada",{"Importe", "Valor"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Columnas quitadas",{{"ID.PARTEProduccion", "ID.PARTE"}}),
+    #"Columna combinada insertada" = Table.AddColumn(#"Columnas con nombre cambiado", "ID.PARTE.ARTICULO", each Text.Combine({Text.From([ID.PARTE], "es-ES"), [Nombre Artículo]}, ":"), type text),
+    #"Columna condicional agregada2" = Table.AddColumn(#"Columna combinada insertada", "Unidad", each if [Código Unidad Medida] = "LIT" then "L" else if [Nombre Unidad Medida] = "UND" then "Un." else if [Código Unidad Medida] = "UNI" then "Un." else if [Código Unidad Medida] = "KG" then "Kg" else [Código Unidad Medida]),
+    #"Columnas quitadas2" = Table.RemoveColumns(#"Columna condicional agregada2",{"Código Unidad Medida"}),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Columnas quitadas2",{{"Unidad", "Código Unidad Medida"}}),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Columnas con nombre cambiado1",{{"Importe_PARTE", type number}, {"Código Unidad Medida", type text}}),
+    #"Columna multiplicada" = Table.TransformColumns(#"Tipo cambiado", {{"Importe_PARTE", each _ * -1, type number}}),
+    #"Valor reemplazado2" = Table.ReplaceValue(#"Columna multiplicada","GENERAL","ABONO GENERAL",Replacer.ReplaceText,{"Nombre Familia Artículo"})
+in
+    #"Valor reemplazado2"
+```
+The previous code snippet performs a series of data transformations on a database table named **"PartesProduccion"** from the **"REPORTING"** schema of the **"WIN-19AB\ERP"** SQL database. Initially, it retrieves the data and replaces null values in the "Importe Transaccional" column with zero. A new column, "IMPORTE," is added, summing the values of "ImportePlusFunc" and "Importe Transaccional." The script renames the "Id_ParteProduccion" column to "ID.PARTEProduccion" and groups the rows by various identifiers, summing the "IMPORTE." It replaces null values in the grouped data, adds a "Valor" column calculated from the product of "Precio el Artículo" and "Cantidad," and introduces a conditional column, "Importe_PARTE," which sets the value based on the "Importe" column's value. After removing unnecessary columns, it renames "ID.PARTEProduccion" to "ID.PARTE" and creates a combined identifier column, "ID.PARTE.ARTICULO," using text concatenation. It also adds a conditional column to translate unit codes and changes the data types of certain columns. Finally, it multiplies the "Importe_PARTE" values by -1 and replaces specific text in the "Nombre Familia Artículo" column. The final output is the transformed table.
+
+**Areas**
+```vs
+let
+    Origen = Sql.Databases("WIN-19AB\ERP"),
+    REPORTING = Origen{[Name="REPORTING"]}[Data],
+    dbo_ProyectosCultivos = REPORTING{[Schema="dbo",Item="ProyectosCultivos"]}[Data],
+    #"Consultas combinadas" = Table.NestedJoin(dbo_ProyectosCultivos, {"Nombre"}, CULTIVOS_ERP, {"Descripcion"}, "CULTIVOS", JoinKind.LeftOuter),
+    #"Se expandió CULTIVOS" = Table.ExpandTableColumn(#"Consultas combinadas", "CULTIVOS", {"SuperficieCultivada"}, {"SuperficieCultivada"}),
+    /*#"Filas filtradas" = Table.SelectRows(#"Se expandió CULTIVOS", each ([NombreProyectoAnalitico] = "ALMENDROS 2016" or [NombreProyectoAnalitico] = "ESPINACAS GELAGRI")),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Filas filtradas",{"FechaAplicacion", "CodigoAlmacen", "NombreAlmacen", "CodigoProveedor", "NombreProveedor", "CodigoCliente", "NombreCliente", "fechaPlantacion", "fechaFinCultivo", "idPRoyecto", "id", "Id1", "Version", "Id2", "Version1", "Id3", "Version2", "Version3", "Version4"}),*/
+    #"Columnas quitadas" = Table.RemoveColumns(#"Se expandió CULTIVOS",{"FechaAplicacion", "CodigoAlmacen", "NombreAlmacen", "CodigoProveedor", "NombreProveedor", "CodigoCliente", "NombreCliente", "fechaPlantacion", "fechaFinCultivo", "idPRoyecto", "id", "Id1", "Version", "Id2", "Version1", "Id3", "Version2", "Version3", "Version4"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Columnas quitadas",{{"SuperficieCultivada", "Superficie_ha"}}),
+    #"Columna combinada insertada" = Table.AddColumn(#"Columnas con nombre cambiado", "PROYECTO", each Text.Combine({[NombreProyectoAnalitico], [CodigoProyectoAnalitico]}, " - "), type text),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Columna combinada insertada",{"PROYECTO"}),
+    #"Columna combinada insertada1" = Table.AddColumn(#"Columnas quitadas1", "PROYECTO", each Text.Combine({[CodigoProyectoAnalitico], [NombreProyectoAnalitico]}, " - "), type text),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Columna combinada insertada1",{{"Codigo", Int64.Type}}),
+    #"Consultas combinadas1" = Table.NestedJoin(#"Tipo cambiado", {"Codigo", "Nombre"}, PARTES_ERP, {"Identificador Cultivo", "Descripción Cultivo"}, "PARTES", JoinKind.LeftOuter),
+    #"Se expandió PARTES" = Table.ExpandTableColumn(#"Consultas combinadas1", "PARTES", {"CampanyaParteProduccionCodigo"}, {"CampanyaParteProduccionCodigo"}),
+    #"Columna condicional agregada" = Table.AddColumn(#"Se expandió PARTES", "Personalizado", each if [Nombre] = "Olivar seto 2015" then "L925000001 - EL POZO - OLIVOS SETO 2015 TOCINA" else if [Nombre] = "Olivar seto 2016" then "L925000003 - OLIVAR SETO TOCINA 2016" else if [Nombre] = "Olivar seto 2017" then "L925000004 - OLIVAR SETO TOCINA 2017" else [PROYECTO]),
+    #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Columna condicional agregada",{{"PROYECTO", "PROYECTO_OLD"}, {"Personalizado", "PROYECTO"}}),
+    #"Filas agrupadas" = Table.Group(#"Columnas con nombre cambiado2", {"CampanyaParteProduccionCodigo", "PROYECTO"}, {{"Superficie_ha", each List.Max([Superficie_ha]), type nullable number}}),
+    #"Columna dividida" = Table.TransformColumns(#"Filas agrupadas", {{"Superficie_ha", each _ / 10000, type number}}),
+    #"Texto insertado antes del delimitador" = Table.AddColumn(#"Columna dividida", "ID.PROYECTO", each Text.BeforeDelimiter([PROYECTO], " -"), type text),
+    #"Columna combinada insertada2" = Table.AddColumn(#"Texto insertado antes del delimitador", "ID.AREA", each Text.Combine({[ID.PROYECTO], [CampanyaParteProduccionCodigo]}, ":"), type text),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Columna combinada insertada2",{{"CampanyaParteProduccionCodigo", "Campaña"}}),
+    #"Evitar Areas 0" = Table.SelectRows(#"Columnas con nombre cambiado1", each [Superficie_ha] > 1)
+in
+    #"Evitar Areas 0"
+```
+This 'M' script extracts and transforms data from the **"ProyectosCultivos"** table within the **"REPORTING"** schema of the **"WIN-19AB\ERP"** SQL database. Initially, it establishes a nested join with the "CULTIVOS_ERP" table based on the project name, expanding the "SuperficieCultivada" column. Several columns, including those irrelevant to the analysis, are removed for clarity. The "SuperficieCultivada" column is renamed to "Superficie_ha," and a new combined column, "PROYECTO," is created by concatenating "NombreProyectoAnalitico" and "CodigoProyectoAnalitico." The script further transforms the data types as necessary and performs a second nested join with the "PARTES_ERP" table to include the "CampanyaParteProduccionCodigo" column. A conditional column named "Personalizado" is added to assign specific project identifiers based on project names. The data is then grouped by "CampanyaParteProduccionCodigo" and "PROYECTO," summarizing "Superficie_ha" while converting its values from square meters to hectares. Additional columns are created to extract and combine project identifiers, and the final output filters out entries with "Superficie_ha" values less than or equal to 1, resulting in a refined dataset ready for analysis.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- Sociedades
+- Fincas
+- Calendario
+- PARTES_keys
+- Cultivos
+
+
+
+
+
+
+
+
+
+## Other Queries
 Include the queries responsible for loading the transformed data into the appropriate destinations (e.g., databases, data warehouses).
 
-## Usage Examples
+## DAX code
 Provide examples of how to utilize the queries effectively within CropCloud Analytics, including any necessary parameters or configuration settings.
 
 ## Notes and Comments
