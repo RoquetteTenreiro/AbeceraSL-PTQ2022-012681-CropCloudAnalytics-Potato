@@ -3,7 +3,7 @@
 **Statement of Purpose**
 
 ## Legal Notice
-This report is intended exclusively for the use of the recipient to whom it is addressed. Any unauthorized access, copying, duplication, or disclosure of the content, in whole or in part, to any third party is strictly prohibited. The information contained in this report may be confidential. Unauthorized use or disclosure may result in legal action and potential liability. The opinions expressed in this report are solely those of the authors.
+Any unauthorized access, copying, duplication, or disclosure of the content, in whole or in part, to any third party is strictly prohibited. The information contained in this repository is not public. Unauthorized use or disclosure may result in legal action and potential liability. The opinions expressed in this report are solely those of the authors.
 
 ## Copyright
 **© [2024]**
