@@ -81,84 +81,90 @@ Subsequent transformations include calculating the **IMPORTE.APLICADO** based on
 
 ```powerquery
 
-<span style="color: #1d593f;">let</span>
-    <span style="color: #1d593f;">// Source: Connect to the SQL database</span>
+let
+
+    // Source
     Origen = Sql.Databases("WIN-19AB\ERP"),
-    
-    <span style="color: #1d593f;">// Access the 'REPORTING' database</span>
     REPORTING = Origen{[Name="REPORTING"]}[Data],
-    
-    <span style="color: #1d593f;">// Access the 'ANALITICA_CULTIVO' table in the 'dbo' schema</span>
     dbo_ANALITICA_CULTIVO = REPORTING{[Schema="dbo",Item="ANALITICA_CULTIVO"]}[Data],
 
-    <span style="color: #1d593f;">// Filter out rows with null values in 'EjercicioAnalitico'</span>
-    <span style="color: #ad8a75;">#"Reject NULL rows [EjercicioAnalitico]"</span> = Table.SelectRows(dbo_ANALITICA_CULTIVO, each ([EjercicioAnalitico] <> null)),
-    
-    <span style="color: #1d593f;">// Add a new column 'Campaña' that duplicates 'EjercicioAnalitico'</span>
-    <span style="color: #ad8a75;">#"Add a new column [Campaña]"</span> = Table.AddColumn(#"Reject NULL rows [EjercicioAnalitico]", "Campaña", each [EjercicioAnalitico]),
-    
-    <span style="color: #1d593f;">// Add a column with text before the first space in 'EjercicioAnalitico'</span>
-    <span style="color: #ad8a75;">#"Inserted Text Before Delimiter [EjercicioAnalitico -> Campaña]"</span> = Table.AddColumn(#"Add a new column [Campaña]", "Text Before Delimiter", each Text.BeforeDelimiter([EjercicioAnalitico], " "), type text),
-    
-    <span style="color: #1d593f;">// Remove the 'Campaña' column from the table</span>
-    <span style="color: #ad8a75;">#"Remove Column [Campaña]"</span> = Table.RemoveColumns(#"Inserted Text Before Delimiter [EjercicioAnalitico -> Campaña]",{"Campaña"}),
-    
-    <span style="color: #1d593f;">// Rename the 'Text Before Delimiter' column to 'Campaña'</span>
-    <span style="color: #ad8a75;">#"Rename Column [Text Before Delimiter -> Campaña]"</span> = Table.RenameColumns(#"Remove Column [Campaña]",{{"Text Before Delimiter", "Campaña"}}),
-    
-    <span style="color: #1d593f;">// Add a column with text before the delimiter "-" in 'PROYECTO'</span>
-    <span style="color: #ad8a75;">#"Texto insertado antes del delimitador2"</span> = Table.AddColumn(#"Rename Column [Text Before Delimiter -> Campaña]", "Texto antes del delimitador", each Text.BeforeDelimiter([PROYECTO], " -"), type text),
-    
-    <span style="color: #1d593f;">// Combine 'Texto antes del delimitador' and 'Campaña' into a new column 'ID.AREA'</span>
-    <span style="color: #ad8a75;">#"Create ID.AREA"</span> = Table.CombineColumns(#"Texto insertado antes del delimitador2",{"Texto antes del delimitador", "Campaña"},Combiner.CombineTextByDelimiter(":", QuoteStyle.None),"ID.AREA"),
-    
-    <span style="color: #1d593f;">// Extract text before the delimiter ":" from 'ID.AREA'</span>
-    <span style="color: #ad8a75;">#"Texto insertado antes del delimitador"</span> = Table.AddColumn(#"Create ID.AREA", "Texto antes del delimitador", each Text.BeforeDelimiter([ID.AREA], ":"), type text),
-    
-    <span style="color: #1d593f;">// Rename the column containing text before the delimiter to 'Proyecto_0'</span>
-    <span style="color: #ad8a75;">#"Columnas con nombre cambiado"</span> = Table.RenameColumns(#"Texto insertado antes del delimitador",{{"Texto antes del delimitador", "Proyecto_0"}}),
-    
-    <span style="color: #1d593f;">// Extract text after the delimiter ":" in 'ID.AREA'</span>
-    <span style="color: #ad8a75;">#"Texto insertado después del delimitador"</span> = Table.AddColumn(#"Columnas con nombre cambiado", "Texto después del delimitador", each Text.AfterDelimiter([ID.AREA], ":"), type text),
-    
-    <span style="color: #1d593f;">// Rename the extracted text column to 'Campaña_0'</span>
-    <span style="color: #ad8a75;">#"Columnas con nombre cambiado2"</span> = Table.RenameColumns(#"Texto insertado después del delimitador",{{"Texto después del delimitador", "Campaña_0"}}),
-    
-    <span style="color: #1d593f;">// Filter rows where 'CODIGOCENTRO' equals "001"</span>
-    <span style="color: #ad8a75;">#"Filas filtradas"</span> = Table.SelectRows(#"Columnas con nombre cambiado2", each ([CODIGOCENTRO] = "001")),
+    // Filter and Transform Data
+    /*#"PROYECTOS - FASE 1" = Table.SelectRows(dbo_ANALITICA_CULTIVO, each ([PROYECTO] = "F923000001 - ESPINACAS GELAGRI" or [PROYECTO] = "F925000006 - ALMENDROS 2016")),
+    #"Reject NULL rows [EjercicioAnalitico]" = Table.SelectRows(#"PROYECTOS - FASE 1", each ([EjercicioAnalitico] <> null)),*/
+    #"Reject NULL rows [EjercicioAnalitico]" = Table.SelectRows(dbo_ANALITICA_CULTIVO, each ([EjercicioAnalitico] <> null)),
+    #"Add a new column [Campaña]" = Table.AddColumn(#"Reject NULL rows [EjercicioAnalitico]", "Campaña", each [EjercicioAnalitico]),
+    #"Inserted Text Before Delimiter [EjercicioAnalitico -> Campaña]" = Table.AddColumn(#"Add a new column [Campaña]", "Text Before Delimiter", each Text.BeforeDelimiter([EjercicioAnalitico], " "), type text),
+    #"Remove Column [Campaña]" = Table.RemoveColumns(#"Inserted Text Before Delimiter [EjercicioAnalitico -> Campaña]",{"Campaña"}),
+    #"Rename Column [Text Before Delimiter -> Campaña]" = Table.RenameColumns(#"Remove Column [Campaña]",{{"Text Before Delimiter", "Campaña"}}),
+    #"Texto insertado antes del delimitador2" = Table.AddColumn(#"Rename Column [Text Before Delimiter -> Campaña]", "Texto antes del delimitador", each Text.BeforeDelimiter([PROYECTO], " -"), type text),
+    #"Create ID.AREA" = Table.CombineColumns(#"Texto insertado antes del delimitador2",{"Texto antes del delimitador", "Campaña"},Combiner.CombineTextByDelimiter(":", QuoteStyle.None),"ID.AREA"),
+    #"Texto insertado antes del delimitador" = Table.AddColumn(#"Create ID.AREA", "Texto antes del delimitador", each Text.BeforeDelimiter([ID.AREA], ":"), type text),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Texto insertado antes del delimitador",{{"Texto antes del delimitador", "Proyecto_0"}}),
+    #"Texto insertado después del delimitador" = Table.AddColumn(#"Columnas con nombre cambiado", "Texto después del delimitador", each Text.AfterDelimiter([ID.AREA], ":"), type text),
+    #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Texto insertado después del delimitador",{{"Texto después del delimitador", "Campaña_0"}}),
+    #"Filas filtradas" = Table.SelectRows(#"Columnas con nombre cambiado2", each ([CODIGOCENTRO] = "001")),
 
-    <span style="color: #1d593f;">// Merge the filtered table with 'Areas' on 'ID.AREA'</span>
-    <span style="color: #ad8a75;">#"Merged Queries - AÑADIR AREAS"</span> = Table.NestedJoin(#"Filas filtradas", {"ID.AREA"}, Areas, {"ID.AREA"}, "AREAS", JoinKind.LeftOuter),
-    
-    <span style="color: #1d593f;">// Expand the merged 'AREAS' column to include 'Campaña' and 'Superficie_ha'</span>
-    <span style="color: #ad8a75;">#"Expand new merged table"</span> = Table.ExpandTableColumn(#"Merged Queries - AÑADIR AREAS", "AREAS", {"Campaña", "Superficie_ha"}, {"Campaña", "Superficie_ha"}),
+    // Filter and Merge Areas Data
+    #"Merged Queries - AÑADIR AREAS" = Table.NestedJoin(#"Filas filtradas", {"ID.AREA"}, Areas, {"ID.AREA"}, "AREAS", JoinKind.LeftOuter),
+    #"Expand new merged table" = Table.ExpandTableColumn(#"Merged Queries - AÑADIR AREAS", "AREAS", {"Campaña", "Superficie_ha"}, {"Campaña", "Superficie_ha"}),
 
-    <span style="color: #1d593f;">// Rename columns for clarity</span>
-    <span style="color: #ad8a75;">#"Columnas con nombre cambiado1"</span> = Table.RenameColumns(#"Expand new merged table",{{"PROYECTO", "PROYECTO_1"},{"Campaña", "Campaña_1"}}),
-    
-    <span style="color: #1d593f;">// Create a new column 'PROYECTO' based on null checks</span>
-    <span style="color: #ad8a75;">#"Columnas con nombre cambiado1.1"</span> = Table.AddColumn(#"Columnas con nombre cambiado1", "PROYECTO", each if [PROYECTO_1] = null then [Proyecto_0] else [PROYECTO_1]),
-    
-    <span style="color: #1d593f;">// Create a new column 'Campaña' based on null checks</span>
-    <span style="color: #ad8a75;">#"Columna condicional agregada"</span> = Table.AddColumn(#"Columnas con nombre cambiado1.1", "Campaña", each if [Campaña_1] = null then [Campaña_0] else [Campaña_1]),
-    
-    <span style="color: #1d593f;">// Remove unnecessary columns</span>
-    <span style="color: #ad8a75;">#"Columnas quitadas"</span> = Table.RemoveColumns(#"Columna condicional agregada",{"Proyecto_0", "PROYECTO_1", "Campaña_0", "Campaña_1"}),
-    
-    <span style="color: #1d593f;">// Change the type of 'FECHAIMPUTACION' to date</span>
-    <span style="color: #ad8a75;">#"Changed Type [FECHAIMPUTACION] in es-ES"</span> = Table.TransformColumnTypes(#"Columnas quitadas", {{"FECHAIMPUTACION", type date}}, "es-ES"),
-    
-    <span style="color: #1d593f;">// Change the type of 'Superficie_ha' and 'IMPORTEAPLICADO' to number</span>
-    <span style="color: #ad8a75;">#"Changed Type [Superficie_ha + IMPORTEAPLICADO]"</span> = Table.TransformColumnTypes(#"Changed Type [FECHAIMPUTACION] in es-ES",{{"Superficie_ha", type number}, {"IMPORTEAPLICADO", type number}}),
-    
-    <span style="color: #1d593f;">// Create a new column 'IMPORTE.señal' to determine the signal type based on 'CODIGOCENTRO'</span>
-    <span style="color: #ad8a75;">#"Columna añadida [IMPORTE.señal]"</span> = Table.AddColumn(#"Changed Type [Superficie_ha + IMPORTEAPLICADO]", "IMPORTE.señal", each if [CODIGOCENTRO] = "001" then "Semilla" else "Otros", type text),
+    // Transform Data
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Expand new merged table",{{"PROYECTO", "PROYECTO_1"},{"Campaña", "Campaña_1"}}),
+    #"Columnas con nombre cambiado1.1"= Table.AddColumn(#"Columnas con nombre cambiado1", "PROYECTO", each if [PROYECTO_1] = null then [Proyecto_0] else [PROYECTO_1]),
+    #"Columna condicional agregada" = Table.AddColumn(#"Columnas con nombre cambiado1.1", "Campaña", each if [Campaña_1] = null then [Campaña_0] else [Campaña_1]),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Columna condicional agregada",{"Proyecto_0", "PROYECTO_1", "Campaña_0", "Campaña_1"}),
+    #"Changed Type [FECHAIMPUTACION] in es-ES" = Table.TransformColumnTypes(#"Columnas quitadas", {{"FECHAIMPUTACION", type date}}, "es-ES"),
+    #"Changed Type [Superficie_ha + IMPORTEAPLICADO]" = Table.TransformColumnTypes(#"Changed Type [FECHAIMPUTACION] in es-ES",{{"Superficie_ha", type number}, {"IMPORTEAPLICADO", type number}}),
+    #"Columna IMPORTE.señal" = Table.AddColumn(#"Changed Type [Superficie_ha + IMPORTEAPLICADO]", "IMPORTE.señal", each if [TIPOGRUPO] = "Gastos" then -1 else 1),
+    #"Include IMPORTE.señal -> IMPORTEAPLICADO" = Table.AddColumn(#"Columna IMPORTE.señal", "IMPORTE.APLICADO", each [IMPORTEAPLICADO] * [IMPORTE.señal], type number),
+    #"Delete old IMPORTEAPLICADO" = Table.RemoveColumns(#"Include IMPORTE.señal -> IMPORTEAPLICADO",{"IMPORTEAPLICADO"}),
+    #"Rename new IMPORTEAPLICADO" = Table.RenameColumns(#"Delete old IMPORTEAPLICADO",{{"IMPORTE.APLICADO", "IMPORTEAPLICADO"}}),
+    #"Define new column [Importe_ha]" = Table.AddColumn(#"Rename new IMPORTEAPLICADO", "Importe_ha", each [IMPORTEAPLICADO]/[Superficie_ha]),
+    #"Changed Type [Importe_ha] to ""number""" = Table.TransformColumnTypes(#"Define new column [Importe_ha]",{{"Importe_ha", type number}}),
+    #"Duplicate Column [IMPORTEAPLICADO - Copy]" = Table.DuplicateColumn(#"Changed Type [Importe_ha] to ""number""", "IMPORTEAPLICADO", "IMPORTEAPLICADO - Copy"),
+    #"Rename Column [Importe_global]" = Table.RenameColumns(#"Duplicate Column [IMPORTEAPLICADO - Copy]",{{"IMPORTEAPLICADO - Copy", "Importe_global"}}),
+    #"Changed Type [Importe_ha] to ""number"" in es-ES" = Table.TransformColumnTypes(#"Rename Column [Importe_global]", {{"Importe_ha", type number}}, "es-ES"),
+    #"Changed Type [Importe_ha] to ""number"" in es-ES 2" = Table.TransformColumnTypes(#"Changed Type [Importe_ha] to ""number"" in es-ES", {{"Importe_global", type number}}, "es-ES"),
+    #"Duplicated Column" = Table.DuplicateColumn(#"Changed Type [Importe_ha] to ""number"" in es-ES 2", "NumeroParteProduccion", "NumeroParteProduccion - Copy"),
+    #"Extracted Last Characters" = Table.TransformColumns(#"Duplicated Column", {{"NumeroParteProduccion - Copy", each Text.End(_, 6), type text}}),
+    #"Rename Column [NumeroParteProduccion]" = Table.RenameColumns(#"Extracted Last Characters",{{"NumeroParteProduccion - Copy", "Numero"}}),
+    #"Duplicate [NumeroParteProduccion]" = Table.DuplicateColumn(#"Rename Column [NumeroParteProduccion]", "NumeroParteProduccion", "NumeroParteProduccion - Copy"),
+    #"Extract Text Before Delimiter [NumeroParteProduccion]" = Table.TransformColumns(#"Duplicate [NumeroParteProduccion]", {{"NumeroParteProduccion - Copy", each Text.BeforeDelimiter(_, " "), type text}}),
+    #"Rename to Serie" = Table.RenameColumns(#"Extract Text Before Delimiter [NumeroParteProduccion]",{{"NumeroParteProduccion - Copy", "Serie"}}),
+    #"Changed Type [Numero] to ""text""" = Table.TransformColumnTypes(#"Rename to Serie",{{"Numero", type text}}),
+    #"Fill EMPTY values [SERIE]" = Table.ReplaceValue(#"Changed Type [Numero] to ""text""","","0",Replacer.ReplaceValue,{"Serie"}),
+    #"Fill EMPTY values [NUMERO]" = Table.ReplaceValue(#"Fill EMPTY values [SERIE]","","0",Replacer.ReplaceValue,{"Numero"}),
+    #"Fill NULL values [Numero]" = Table.ReplaceValue(#"Fill EMPTY values [NUMERO]",null,"0",Replacer.ReplaceValue,{"Numero"}),
+    #"Changed Type [Numero]" = Table.TransformColumnTypes(#"Fill NULL values [Numero]",{{"Numero", Int64.Type}}),
+    #"Select final columns" = Table.SelectColumns(#"Changed Type [Numero]",{"TIPOGRUPO", "SUBGRUPO", "PARTIDA", "FECHAIMPUTACION", "CONCEPTODOCUMENTO", "CONCEPTOAPUNTE", "NUMEROALBARANVENTA", "ARTICULOALBARANVENTA", "CANTIDADALBARANVENTA", "ID_AnaliticaImputacion", "EjercicioAnalitico", "Id_AreaResponsabilidad", "EjercicioContable", "CLI430_idParte", "CONCEPTO ANALITICO", "ID.AREA", "Superficie_ha", "PROYECTO", "Campaña", "IMPORTEAPLICADO", "Importe_ha", "Importe_global", "Numero", "Serie"}),
+    #"Delete column [CONCEPTO]" = Table.RemoveColumns(#"Select final columns",{"CONCEPTO ANALITICO"}),
+    #"Rename Column [id_PARTE]" = Table.RenameColumns(#"Delete column [CONCEPTO]",{{"CLI430_idParte", "id_PARTE"}}),
+    #"Changed Type [id_PARTE]" = Table.TransformColumnTypes(#"Rename Column [id_PARTE]",{{"id_PARTE", Int64.Type}}),
+    #"Inserted Text After Delimiter" = Table.AddColumn(#"Changed Type [id_PARTE]", "Text After Delimiter", each Text.AfterDelimiter([PARTIDA], "- "), type text),
+    #"Removed Columns" = Table.RemoveColumns(#"Inserted Text After Delimiter",{"PARTIDA"}),
+    #"Renamed Columns" = Table.RenameColumns(#"Removed Columns",{{"Text After Delimiter", "PARTIDA"}}),
+    #"Columnas reordenadas" = Table.ReorderColumns(#"Renamed Columns",{"PROYECTO", "TIPOGRUPO", "SUBGRUPO", "PARTIDA", "FECHAIMPUTACION", "IMPORTEAPLICADO", "CONCEPTODOCUMENTO", "CONCEPTOAPUNTE", "NUMEROALBARANVENTA", "ARTICULOALBARANVENTA", "ID_AnaliticaImputacion", "EjercicioAnalitico", "EjercicioContable", "id_PARTE", "ID.AREA", "Campaña", "Superficie_ha", "Importe_ha", "Importe_global", "Numero", "Serie"}),
+    #"Columnas con nombre cambiado3" = Table.RenameColumns(#"Columnas reordenadas",{{"id_PARTE", "ID.PARTE"}}),
+    #"Texto insertado antes del delimitador1" = Table.AddColumn(#"Columnas con nombre cambiado3", "ID.PROYECTO", each Text.BeforeDelimiter([PROYECTO], " -"), type text),
+    #"Primeros caracteres insertados" = Table.AddColumn(#"Texto insertado antes del delimitador1", "Primeros caracteres", each Text.Start([ID.PROYECTO], 1), type text),
+    #"Columnas con nombre cambiado4" = Table.RenameColumns(#"Primeros caracteres insertados",{{"Primeros caracteres", "ID.FINCA"}}),
+    #"Texto extraído después del delimitador" = Table.TransformColumns(#"Columnas con nombre cambiado4", {{"SUBGRUPO", each Text.AfterDelimiter(_, "- "), type text}}),
+    #"Columna duplicada20" = Table.DuplicateColumn(#"Texto extraído después del delimitador", "ID.PROYECTO", "ID.PROYECTO - Copia"),
 
-    <span style="color: #1d593f;">// Remove 'CODIGOCENTRO' column</span>
-    <span style="color: #ad8a75;">#"Columnas quitadas1"</span> = Table.RemoveColumns(#"Columna añadida [IMPORTE.señal]",{"CODIGOCENTRO"}),
-
-    <span style="color: #1d593f;">// Rename columns for clarity</span>
-    <span style="color: #ad8a75;">#"Renamed Columns"</span> = Table.RenameColumns(#"Columnas quitadas1",{{"FECHAIMPUTACION", "FECHA"}, {"SUPERVISOR", "SUPERVISOR_1"}})
+    // Define AreaResponsabilidad
+    #"Crear AREA RESPONSABILIDAD0" = Table.TransformColumns(#"Columna duplicada20", {{"ID.PROYECTO - Copia", each Text.Middle(_, 1, 3), type text}}),
+    #"Columnas con nombre cambiado80" = Table.RenameColumns(#"Crear AREA RESPONSABILIDAD0",{{"ID.PROYECTO - Copia", "AreaResponsabilidad"}}),
+    #"Tipo cambiado10" = Table.TransformColumnTypes(#"Columnas con nombre cambiado80",{{"AreaResponsabilidad", Int64.Type}}),
+    #"Columna condicional agregada20" = Table.AddColumn(#"Tipo cambiado10", "Personalizado", each if [AreaResponsabilidad] = 400 then "ACREEDORES Y DEUDORES" else if [AreaResponsabilidad] = 401 then "VARIOS" else if [AreaResponsabilidad] = 410 then "EXPLOTACIONES" else if [AreaResponsabilidad] = 460 then "PERSONAL" else if [AreaResponsabilidad] = 480 then "CUENTAS DIVERSAS" else if [AreaResponsabilidad] = 482 then "INVERSIONES EN CURSO" else if [AreaResponsabilidad] = 901 then "CULTIVO AÑO ANTERIOR" else if [AreaResponsabilidad] = 905 then "PLANTACIONES AÑO ANTERIOR" else if [AreaResponsabilidad] = 906 then "GANADO AÑO ANTERIOR" else if [AreaResponsabilidad] = 921 then "CULTIVOS EXTENSIVOS" else if [AreaResponsabilidad] = 922 then "HORTICOLAS FRESCAS" else if [AreaResponsabilidad] = 923 then "HORTICOLAS INDUSTRIA" else if [AreaResponsabilidad] = 924 then "ECO" else if [AreaResponsabilidad] = 925 then "PLANTACIONES" else if [AreaResponsabilidad] = 926 then "GANADO" else if [AreaResponsabilidad] = 929 then "CULTIVOS DIVERSOS" else if [AreaResponsabilidad] = 940 then "AGUA RIEGO" else if [AreaResponsabilidad] = 941 then "OTRAS CUENTAS DE GASTOS" else if [AreaResponsabilidad] = 942 then "MARCA CLR" else if [AreaResponsabilidad] = 943 then "VISITAS TURISTICAS LA REINA" else if [AreaResponsabilidad] = 944 then "SUBVENCIONES" else if [AreaResponsabilidad] = 950 then "TRACTORES" else if [AreaResponsabilidad] = 951 then "TRACTORES ALQUILER" else if [AreaResponsabilidad] = 957 then "APEROS" else if [AreaResponsabilidad] = 958 then "MAQUINARIA CUENTA DE EXPLOTACION" else if [AreaResponsabilidad] = 959 then "TRACTORES CUENTA EXPLOTACION" else if [AreaResponsabilidad] = 960 then "GASTOS GENERALES" else if [AreaResponsabilidad] = 980 then "GASTOS GENERALES" else "na"),
+    #"Columnas con nombre cambiado5" = Table.RenameColumns(#"Columna condicional agregada20",{{"AreaResponsabilidad", "ID.AreaResponsabilidad"}, {"Personalizado", "AreaResponsabilidad"}}),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Columnas con nombre cambiado5",{{"AreaResponsabilidad", type text}}),
+    #"Filas filtradas1" = Table.SelectRows(#"Tipo cambiado", each ([AreaResponsabilidad] = "AGUA RIEGO" or [AreaResponsabilidad] = "CULTIVOS DIVERSOS" or [AreaResponsabilidad] = "CULTIVOS EXTENSIVOS" or [AreaResponsabilidad] = "ECO" or [AreaResponsabilidad] = "GANADO" or [AreaResponsabilidad] = "HORTICOLAS FRESCAS" or [AreaResponsabilidad] = "HORTICOLAS INDUSTRIA" or [AreaResponsabilidad] = "PLANTACIONES")),
+    #"Primeros caracteres insertados1" = Table.AddColumn(#"Filas filtradas1", "Primeros caracteres", each Text.Start([Campaña], 2), type text),
+    #"Columnas con nombre cambiado6" = Table.RenameColumns(#"Primeros caracteres insertados1",{{"Primeros caracteres", "CampañaOrder"}}),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Columnas con nombre cambiado6",{{"CampañaOrder", Int64.Type}}),
+    #"Columnas con nombre cambiado7" = Table.RenameColumns(#"Tipo cambiado1",{{"CANTIDADALBARANVENTA", "Cantidad_PRODUCTO"}})
+in
+    #"Columnas con nombre cambiado7"
 
 ```
 
