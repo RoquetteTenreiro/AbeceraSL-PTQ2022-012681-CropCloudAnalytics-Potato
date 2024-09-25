@@ -21,7 +21,7 @@ At Abecera Agricultural Company, we utilize a star schema to analyze farming ope
 
 The approach features six distinct clusters of queries, facilitating comprehensive analysis across various dimensions.
 
-The fact table is **ANALITICA ERP**, which corresponds to the analytical output table exported through SQL from the Hispatec ERP.agro system. This step is programmed in SQL to export a table that is over 200 columns wide (each column corresponding to a different field) into the Power Query interface.
+The fact table is **ANALITICA_ERP**, which corresponds to the analytical output table exported through SQL from the Hispatec ERP.agro system. This step is programmed in SQL to export a table that is over 200 columns wide (each column corresponding to a different field) into the Power Query interface.
 
 **ANALITICA_ERP** includes all the main analytical accounting entries of the parent company, where a record is kept of all accounting entries following a specific structure that defines expenses and income by analytical project. An analytical project can be an investment account, a crop, or an expense account for amortizations. The concept of an analytical project is fundamental to the company's structure as it defines the basic integrated unit of all accounting events, referred to in BI terminology as facts. Therefore, this table is known in BI terms as the fact table; it is the center of the solar system of data within the company, around which all other tables relate to one another.
 
