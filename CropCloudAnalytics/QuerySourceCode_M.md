@@ -3,9 +3,9 @@
 This document contains the Power Query M source code utilized in the CropCloudAnalytics model. It serves as a comprehensive repository for all queries related to data extraction, transformation, and loading processes within the application. The structured format allows for easy navigation and reference for developers and data analysts involved in maintaining and enhancing the CropCloudAnalytics system.
 
 ## Table of Contents
-1. [Overview](#overview)
+1. [Overview of CropCloudAnalytics](#overview-of-cropcloudanalytics)
 2. [Data Sources](#data-sources)
-3. [Transformations](#transformations)
+3. [Data Transformations](#data-transformations)
 4. [Load Queries](#load-queries)
 5. [Usage Examples](#usage-examples)
 6. [Notes and Comments](#notes-and-comments)
