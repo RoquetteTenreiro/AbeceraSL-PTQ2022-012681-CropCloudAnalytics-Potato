@@ -259,6 +259,7 @@ let
     #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Texto insertado después del delimitador",{{"Texto después del delimitador", "Sociedad"}})
 in
     #"Columnas con nombre cambiado1"
+```
 
 This Power Query M script in Power BI is designed to load, clean, and transform data from a CSV file, preparing it for further analysis. The process begins by loading the CSV file named "Proyectos Analíticos.csv" from a specific directory. The `Csv.Document` function is employed to interpret the file, specifying a semicolon as the delimiter, identifying that the file contains 11 columns, and setting the encoding to `1252`, commonly used for Western European characters. No special quoting style is applied, ensuring that all content is processed as it appears in the CSV. Once the file is loaded, the script transforms the data types of all columns to text. The `Table.TransformColumnTypes` function is used for this task, ensuring that each column, from Column1 to Column11, is treated uniformly as text, which might be necessary if the original file contained a mixture of data types.
 
