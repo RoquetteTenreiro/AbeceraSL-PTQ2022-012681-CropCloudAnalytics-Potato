@@ -245,6 +245,28 @@ This 'M' script extracts and transforms data from the **"ProyectosCultivos"** ta
 
 
 
+**Sociedades**
+```vs
+let
+    Origen = Csv.Document(File.Contents("C:\Users\usuario6\Desktop\Power BI - FASE 2\Agro\Proyectos Analíticos.csv"),[Delimiter=";", Columns=11, Encoding=1252, QuoteStyle=QuoteStyle.None]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(Origen,{{"Column1", type text}, {"Column2", type text}, {"Column3", type text}, {"Column4", type text}, {"Column5", type text}, {"Column6", type text}, {"Column7", type text}, {"Column8", type text}, {"Column9", type text}, {"Column10", type text}, {"Column11", type text}}),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Tipo cambiado",{"Column4", "Column5"}),
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Columnas quitadas", [PromoteAllScalars=true]),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Encabezados promovidos",{"", "_1", "_2", "_3", "_4"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Columnas quitadas1",{{"Nombre", "Nombre.PROYECTO"}, {"Código", "ID.PROYECTO"}}),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Columnas con nombre cambiado","""0""","""0000000000""",Replacer.ReplaceText,{"ID.PROYECTO"}),
+    #"Texto insertado después del delimitador" = Table.AddColumn(#"Valor reemplazado", "Texto después del delimitador", each Text.AfterDelimiter([Empresa Principal], "- "), type text),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Texto insertado después del delimitador",{{"Texto después del delimitador", "Sociedad"}})
+in
+    #"Columnas con nombre cambiado1"
+
+This Power Query M script in Power BI is designed to load, clean, and transform data from a CSV file, preparing it for further analysis. The process begins by loading the CSV file named "Proyectos Analíticos.csv" from a specific directory. The `Csv.Document` function is employed to interpret the file, specifying a semicolon as the delimiter, identifying that the file contains 11 columns, and setting the encoding to `1252`, commonly used for Western European characters. No special quoting style is applied, ensuring that all content is processed as it appears in the CSV. Once the file is loaded, the script transforms the data types of all columns to text. The `Table.TransformColumnTypes` function is used for this task, ensuring that each column, from Column1 to Column11, is treated uniformly as text, which might be necessary if the original file contained a mixture of data types.
+
+Following this, the script proceeds to remove two columns, specifically `Column4` and `Column5`, which are deemed unnecessary for the analysis. This step reduces the dataset to relevant information only, simplifying further processing. The table's first row, which contains the actual field names, is then promoted to serve as the header. This is done with the `Table.PromoteHeaders` function, which replaces the default generic column names (e.g., Column1, Column2) with meaningful headers extracted from the first row. Further cleaning is carried out by removing additional columns that contain either empty names or placeholder names (such as `_1`, `_2`). This step ensures the dataset remains streamlined and excludes any columns that do not contribute useful data. 
+
+In the next phase, two key columns are renamed for clarity. The column originally named `"Nombre"` is renamed to `"Nombre.PROYECTO"`, indicating that it holds the name of the project. Similarly, the `"Código"` column is renamed to `"ID.PROYECTO"`, signifying that it contains the unique project identifier. These renaming operations are essential for making the dataset easier to interpret. The script then performs a value replacement within the `"ID.PROYECTO"` column. Using `Table.ReplaceValue`, any occurrence of the value `"0"` is replaced with `"0000000000"`, likely to ensure that all project IDs follow a standardized format with a fixed length, possibly to maintain consistency or meet formatting requirements for subsequent data handling. Following this, the script adds a new column to the dataset. The new column, initially named `"Texto después del delimitador"`, extracts text that appears after a specific delimiter (`"- "`) from the `"Empresa Principal"` column. This is done using the `Text.AfterDelimiter` function, which pulls the part of the text that follows the hyphen and space, likely isolating a specific section of the company name or another related identifier.
+
+Finally, this newly added column is renamed to `"Sociedad"`, giving it a clearer, contextually relevant title. This transformation concludes the script, which outputs a table named `"Columnas con nombre cambiado1"`. By this point, the data has been fully transformed: unnecessary columns have been removed, headers have been promoted, key columns have been renamed for clarity, and a new column has been added to enhance the dataset. The resulting table is now well-structured and prepared for analysis in Power BI.
 
 
 
@@ -253,9 +275,6 @@ This 'M' script extracts and transforms data from the **"ProyectosCultivos"** ta
 
 
 
-
-
-- Sociedades
 - Fincas
 - Calendario
 - PARTES_keys
