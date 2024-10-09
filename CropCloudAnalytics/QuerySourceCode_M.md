@@ -260,7 +260,6 @@ let
 in
     #"Columnas con nombre cambiado1"
 ```
-
 This Power Query M script in Power BI is designed to load, clean, and transform data from a CSV file, preparing it for further analysis. The process begins by loading the CSV file named "Proyectos Analíticos.csv" from a specific directory. The `Csv.Document` function is employed to interpret the file, specifying a semicolon as the delimiter, identifying that the file contains 11 columns, and setting the encoding to `1252`, commonly used for Western European characters. No special quoting style is applied, ensuring that all content is processed as it appears in the CSV. Once the file is loaded, the script transforms the data types of all columns to text. The `Table.TransformColumnTypes` function is used for this task, ensuring that each column, from Column1 to Column11, is treated uniformly as text, which might be necessary if the original file contained a mixture of data types.
 
 Following this, the script proceeds to remove two columns, specifically `Column4` and `Column5`, which are deemed unnecessary for the analysis. This step reduces the dataset to relevant information only, simplifying further processing. The table's first row, which contains the actual field names, is then promoted to serve as the header. This is done with the `Table.PromoteHeaders` function, which replaces the default generic column names (e.g., Column1, Column2) with meaningful headers extracted from the first row. Further cleaning is carried out by removing additional columns that contain either empty names or placeholder names (such as `_1`, `_2`). This step ensures the dataset remains streamlined and excludes any columns that do not contribute useful data. 
@@ -269,19 +268,68 @@ In the next phase, two key columns are renamed for clarity. The column originall
 
 Finally, this newly added column is renamed to `"Sociedad"`, giving it a clearer, contextually relevant title. This transformation concludes the script, which outputs a table named `"Columnas con nombre cambiado1"`. By this point, the data has been fully transformed: unnecessary columns have been removed, headers have been promoted, key columns have been renamed for clarity, and a new column has been added to enhance the dataset. The resulting table is now well-structured and prepared for analysis in Power BI.
 
+**Fincas**
+```vs
+let
+    Origen = Csv.Document(File.Contents("C:\Users\usuario6\Desktop\Power BI - FASE 2\Agro\Fincas.csv"),[Delimiter=";", Columns=2, Encoding=1252, QuoteStyle=QuoteStyle.None]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(Origen,{{"Column1", type text}, {"Column2", type text}}),
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Tipo cambiado", [PromoteAllScalars=true]),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Letter", type text}, {"Finca", type text}}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Tipo cambiado1",{{"Letter", "ID.FINCA"}})
+in
+    #"Columnas con nombre cambiado"
+```
+This M script loads a CSV file named "Fincas.csv" containing two columns, changes their data types to text, and promotes the first row to headers. It then ensures the column types remain text and renames the column "Letter" to "ID.FINCA" for clarity, preparing the data for analysis in Power BI. The process involves cleaning and structuring the dataset to make it more readable and organized.
+
+**Calendario**
+```vs
+let
+    Origen = fCalendario(#date(2005, 1, 1), #date(2030, 12, 31)),
+    #"Fecha insertada" = Table.AddColumn(Origen, "Fecha.1", each DateTime.Date([Fecha]), type date),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Fecha insertada",{"Fecha"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Columnas quitadas",{{"Fecha.1", "FECHA"}})
+in
+    #"Columnas con nombre cambiado"
+```
+In this context, we define a calendar table, also referred to as a date dimension table, as a crucial component of a star schema model in Power BI for several compelling reasons. Firstly, it enhances time-based analysis by enabling the implementation of time intelligence calculations, such as year-to-date, month-to-date, and quarter-over-quarter assessments. This capability allows us to perform standardized analyses across various time periods—be it days, months, quarters, or years—spanning multiple fact tables. Secondly, a calendar table significantly boosts performance by streamlining queries; it acts as a central element for establishing relationships with diverse fact tables, thereby optimizing data retrieval and simplifying the overall structure.
+
+Moreover, a calendar table offers a wealth of date attributes, including week numbers, holidays, fiscal periods, and custom categorizations (e.g., weekdays versus weekends). This richness enhances analytical capabilities while avoiding data duplication across multiple tables, ensuring consistency and minimizing discrepancies. It also improves filtering and slicing functionalities, enabling users to intuitively filter reports and dashboards by specific dates or time frames, which ultimately leads to more insightful analyses. Finally, a calendar table promotes compatibility with various data sources by bridging datasets that may utilize different date formats or systems, facilitating a more uniform approach to analysis. The calendar table functions as a key elementary table, allowing for one-to-many relationships that support time-dependent DAX calculations. This has proven essential in a model of this kind, which incorporates time-dependent analysis.
 
 
+**PARTES_keys**
+```vs
+let
+    Origen = PARTES_ERP,
+    #"Filas agrupadas" = Table.Group(Origen, {"ID.PARTE", "ID.PARTE.ARTICULO"}, {{"recuento", each Table.RowCount(_), Int64.Type}}),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Filas agrupadas",{"recuento", "ID.PARTE.ARTICULO"}),
+    #"Filas agrupadas1" = Table.Group(#"Columnas quitadas", {"ID.PARTE"}, {{"Recuento", each Table.RowCount(_), Int64.Type}}),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Filas agrupadas1",{"Recuento"})
+in
+    #"Columnas quitadas1"
+```
+This section establishes a single key identifier table, referred to as an elementary key table, which supports one-to-many relationships for selecting information related to PARTES de campo from the PARTES table in the ERP system.
 
+**Cultivos**
+```vs
+let
+    Origen = Areas,
+    #"Columnas quitadas" = Table.RemoveColumns(Origen,{"Campaña", "Superficie_ha", "ID.AREA"}),
+    #"Texto insertado después del delimitador" = Table.AddColumn(#"Columnas quitadas", "Texto después del delimitador", each Text.AfterDelimiter([PROYECTO], "- "), type text),
+    #"Texto extraído antes del delimitador" = Table.TransformColumns(#"Texto insertado después del delimitador", {{"Texto después del delimitador", each Text.BeforeDelimiter(_, " "), type text}}),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Texto extraído antes del delimitador","CAMPITO","CAMPITO LIMAGRAIN",Replacer.ReplaceText,{"Texto después del delimitador"}),
+    #"Valor reemplazado1" = Table.ReplaceValue(#"Valor reemplazado","EL","OLIVAR",Replacer.ReplaceText,{"Texto después del delimitador"}),
+    #"Columna condicional agregada" = Table.AddColumn(#"Valor reemplazado1", "CULTIVO", each if [ID.PROYECTO] = "J921000100" then "OLIVAR ECOLOGICO" else if [ID.PROYECTO] = "F410000012" then "OLIVAR" else if [ID.PROYECTO] = "F410000011" then "OLIVAR" else if [ID.PROYECTO] = "F410000010" then "ALMENDROS" else if [ID.PROYECTO] = "F923000002" then "GRELOS" else if [ID.PROYECTO] = "F410000014" then "TRIGO" else if [ID.PROYECTO] = "F410000013" then "OLIVAR" else if [ID.PROYECTO] = "F410000006" then "FUENREAL" else [Texto después del delimitador]),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Columna condicional agregada",{"Texto después del delimitador"}),
+    #"Texto insertado después del delimitador1" = Table.AddColumn(#"Columnas quitadas1", "Texto después del delimitador", each Text.AfterDelimiter([PROYECTO], "- "), type text),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Texto insertado después del delimitador1",{{"Texto después del delimitador", "PROYECTO_Riego_keys"}})
+in
+    #"Columnas con nombre cambiado"
+```
+This script processes a dataset represented by the variable "Areas". The initial step removes unnecessary columns, specifically "Campaña", "Superficie_ha" and "ID.AREA" which helps streamline the dataset to focus on relevant information. Subsequently, the script adds a new column that extracts text appearing after the delimiter "- " from the "PROYECTO" column, creating a column named "Texto después del delimitador". This operation is useful for isolating specific segments of the project names. The script then refines this new column by transforming its values to keep only the text before the next space, further clarifying the content.
 
+Following this, the script employs a series of value replacements to standardize the text. The term "CAMPITO" is replaced with "CAMPITO LIMAGRAIN", ensuring consistency, while "EL" is replaced with "OLIVAR," aligning with specific naming conventions. Next, a conditional column is added, labeled "CULTIVO". This column assigns specific crop types based on the "ID.PROYECTO" values. For instance, projects with the ID "J921000100" are classified as "OLIVAR ECOLOGICO," while others are categorized into "OLIVAR," "ALMENDROS," "GRELOS," or "TRIGO." This step enhances the dataset by providing meaningful context about each crop related project.
 
-
-
-- Fincas
-- Calendario
-- PARTES_keys
-- Cultivos
-
-
+Afterwards, the script removes the "Texto después del delimitador" column, as its purpose has been served. It then repeats the process of extracting text after the delimiter from the "PROYECTO" column to create another column with the same name, essentially reinstating that aspect of the data for further use. Finally, the script renames this new column to "PROYECTO_Riego_keys" clarifying its intended use related to irrigation keys. The script concludes by outputting this well-structured dataset, which has undergone several transformations to enhance its clarity and usability for analysis.
 
 
 
