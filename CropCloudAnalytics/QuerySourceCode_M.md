@@ -456,12 +456,139 @@ The SALDO_RIEGO table (identified by farm ID) is a fundamental table that consol
 
 The code connects to a SQL Server database ("WIN-19AB\ERP") and retrieves data from the ANALITICA_CULTIVO table within the REPORTING database, focusing specifically on records where the area of responsibility (Id_AreaResponsabilidad) is 46, corresponding to the "AGUAS-RIEGOS" section. It creates a new column that extracts text after the hyphen in the PROYECTO column and classifies the expenses into either "Variable" or "Fijo" in the TIPO.GASTO column based on specific keywords. The code also extracts the year from the FECHAIMPUTACION column, filtering the data to include only records from the 2022/2023 and 2023/2024 campaigns. It adds a column to determine the quarter of the year based on FECHAIMPUTACION and further filters the data to include only rows categorized under the SUBGRUPO "GAS - GASTOS". A new conditional column called coeficiente is created to differentiate between positive and negative values in the IMPORTEAPLICADO field, and this coeficiente is multiplied by the applied amount. The code groups the data by various fields, including TIPOGRUPO, TIPO.GASTO, and year, summing the relevant values. The dataset is then sorted by a calculated key based on the year and quarter, and only the last nine rows are retained. Finally, the data is grouped again by expense type and year, with a sum of the SALDO column, and any data from 2024 is excluded before the transformed dataset is returned.
 
+**Riego_total**
+```vs
+let
+    Origen = GoogleSheets.Contents("https://docs.google.com/spreadsheets/d/1u7LYecQ7W-ffxf0UpujMYrShQ5kBqXH9RPNlwyzN0jk/edit?usp=sharing"),
+    #"Respuestas de formulario 1_Table" = Origen{[name="Respuestas de formulario 1",ItemKind="Table"]}[Data],
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Respuestas de formulario 1_Table", [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Marca temporal", type datetime}, {"FECHA", type date}, {"CULTIVO/PARCELA", type text}, {"PASES", Int64.Type}, {"PORCENTAJE%", type number}, {"HORAS", type any}, {"OBSERVACIONES", type any}, {"COEFICIENTE", type number}, {"HAS", type number}, {"TIPO", type text}, {"PASES 100%", type number}, {"M3", type number}, {"M3/HA", type number}}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Tipo cambiado",{{"PORCENTAJE%", "PORCENTAJE"}}),
+    #"Filas filtradas1" = Table.SelectRows(#"Columnas con nombre cambiado", each ([Marca temporal] <> null)),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Filas filtradas1",{"Marca temporal", "COEFICIENTE", "HAS", "TIPO", "PASES 100%", "M3", "M3/HA"}),
+    #"Consultas combinadas" = Table.NestedJoin(#"Columnas quitadas", {"CULTIVO/PARCELA"}, #"DATOS-RIEGO", {"CULTIVO/PARCELA"}, "DATOS", JoinKind.LeftOuter),
+    #"Se expandió DATOS" = Table.ExpandTableColumn(#"Consultas combinadas", "DATOS", {"HAS", "TIPO", "COEFICIENTE(L/M2)", "PROYECTO"}, {"HAS", "TIPO", "COEFICIENTE(L/M2)", "PROYECTO"}),
+    #"Filas ordenadas" = Table.Sort(#"Se expandió DATOS",{{"FECHA", Order.Ascending}}),
+    #"Personalizada agregada" = Table.AddColumn(#"Filas ordenadas", "PASES_100", each [PASES]*(1/[PORCENTAJE])),
+    #"Personalizada agregada1" = Table.AddColumn(#"Personalizada agregada", "M3", each if [TIPO]="PIVOT" then [PASES_100]*[#"COEFICIENTE(L/M2)"]*[HAS]*10 else [HORAS]*[#"COEFICIENTE(L/M2)"]*[HAS]*10),
+    #"Personalizada agregada2" = Table.AddColumn(#"Personalizada agregada1", "M3/HA", each [M3]/[HAS]),
+    #"Año insertado" = Table.AddColumn(#"Personalizada agregada2", "Año", each Date.Year([FECHA]), Int64.Type),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Año insertado",2022,2022,Replacer.ReplaceValue,{"Año"}),
+    #"Filas filtradas2" = Table.SelectRows(#"Valor reemplazado", each ([Año] = 2023) and ([M3] <> null)),
+    #"Consultas combinadas1" = Table.NestedJoin(#"Filas filtradas2", {"Año"}, #"SALDO_RIEGO La Reina", {"Año"}, "SALDO_RIEGO", JoinKind.LeftOuter),
+    #"Se expandió SALDO_RIEGO" = Table.ExpandTableColumn(#"Consultas combinadas1", "SALDO_RIEGO", {"TIPO.GASTO", "SALDO"}, {"TIPO.GASTO", "SALDO"}),
+    #"Filas agrupadas" = Table.Group(#"Se expandió SALDO_RIEGO", {"PROYECTO", "TIPO.GASTO"}, {{"M3", each List.Sum([M3]), type number}, {"M3/ha", each List.Average([#"M3/HA"]), type number}, {"SALDO", each List.Median([SALDO]), type nullable number}}),
+    #"Filas filtradas" = Table.SelectRows(#"Filas agrupadas", each ([PROYECTO] <> null)),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Filas filtradas",{"PROYECTO", "M3/ha"}),
+    #"Filas agrupadas1" = Table.Group(#"Columnas quitadas1", {"SALDO"}, {{"M3", each List.Sum([M3]), type number}})
+in
+    #"Filas agrupadas1"
+```
+This table essentially replicates the computation procedure followed earlier, but in this case, it calculates the total volume of water used year-to-date. The code imports data from the same Google Sheets document, processes it by transforming data types, adding calculated columns, and joining it with another table ("DATOS-RIEGO"). It filters the data for the year of analysis, calculates water usage ("M3" and "M3/HA"), and merges it with the "SALDO_RIEGO" table. Finally, it groups and sums the results based on specific fields, producing a summarized dataset of overall water usage and expenses.
+
+**Riego_areas**
+```vs
+let
+    Origen = GoogleSheets.Contents("https://docs.google.com/spreadsheets/d/1u7LYecQ7W-ffxf0UpujMYrShQ5kBqXH9RPNlwyzN0jk/edit?usp=sharing"),
+    DATOS_Table = Origen{[name="DATOS",ItemKind="Table"]}[Data],
+    #"Columnas quitadas" = Table.RemoveColumns(DATOS_Table,{"Column1"}),
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Columnas quitadas", [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"ID", Int64.Type}, {"PARCELA", type text}, {"CULTIVO", type text}, {"CULTIVO/PARCELA", type text}, {"HAS", type number}, {"TIPO", type text}, {"COEFICIENTE(L/M2)", type number}, {"PROYECTO ANALÍTICO", type text}}),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Tipo cambiado",{"PROYECTO ANALÍTICO"}),
+    #"CREAR PROYECTOS" = Table.AddColumn(#"Columnas quitadas1", "PROYECTO", each if [CULTIVO] = "ALMENDROS PIRINEO 2016" then "F925000006 - ALMENDROS 2016" else if [CULTIVO] = "ESPINACAS" then "F923000001 - ESPINACAS GELAGRI" else if [#"CULTIVO/PARCELA"] = "12-AJOS-P10T_CORDOBA" then "F922000001 - AJOS CHINOS" else if [#"CULTIVO/PARCELA"] = "19-GUISANTES-P11T_ALMODOVAR" then "F923000003 - GUISANTES" else if [#"CULTIVO/PARCELA"] = "22-GUISANTES-PTUMBAITO_ALMODOVAR" then "F923000014 - GUISANTES SPS" else if [#"CULTIVO/PARCELA"] = "14-GUISANTES-P13T_ALMODOVAR_NORTE" then "F923000014 - GUISANTES SPS" else if [#"CULTIVO/PARCELA"] = "17-GUISANTES-P13T_ALMODOVAR_SUR" then "F923000014 - GUISANTES SPS" else if [#"CULTIVO/PARCELA"] = "20-TRIGO LIMAGRAIN-P11T_CORDOBA" then "F941000101 - CAMPITO LIMAGRAIN" else if [#"CULTIVO/PARCELA"] = "21-TRIGO DURO-PTUMBAITO_CORDOBA" then "F921000001 - TRIGO DURO" else if [#"CULTIVO/PARCELA"] = "13-ALMENDROS MAJOLETO 2020-ALMENDROS MAJOLETO 2020" then "F925000020 - ALMENDROS BELONA" else if [#"CULTIVO/PARCELA"] = "23-ALMENDROS SECANILLOS 2019-ALMENDROS SECANILLOS 2019" then "F925000010 - ALMENDROS 2019 SECANILLOS" else if [#"CULTIVO/PARCELA"] = "24-ALMENDROS SETO P.4-5 2019-ALMENDROS SETO P.4-5 2019" then "F925000011 - ALMENDROS 2019 SETO" else if [#"CULTIVO/PARCELA"] = "25-ALMENDROS PIRINEO 2014-ALMENDROS PIRINEO 2014" then "F925000001 - ALMENDROS 2014" else if [#"CULTIVO/PARCELA"] = "26-ALMENDROS PIRINEO 2016-ALMENDROS PIRINEO 2016" then "F925000006 - ALMENDROS 2016" else if [#"CULTIVO/PARCELA"] = "27-ALMENDROS PIRINEO NUEVO19-ALMENDROS PIRINEO NUEVO19" then "F925000018 - ALMENDROS 2020 CARACOL (FASE I) Y PIRINEO NUEVO" else if [#"CULTIVO/PARCELA"] = "30-ALMENDROS CARACOL 2020-ALMENDROS CARACOL 2020" then "F925000018 - ALMENDROS 2020 CARACOL (FASE I) Y PIRINEO NUEVO" else if [#"CULTIVO/PARCELA"] = "34-ALMENDROS CARACOL 2021-ALMENDROS CARACOL 2021" then "F925000019 - ALMENDROS 2021 CARACOL (FASE II)" else if [#"CULTIVO/PARCELA"] = "41-ALMENDROS LA BARCA 2014-ALMENDROS LA BARCA 2014" then "F925000001 - ALMENDROS 2014" else if [#"CULTIVO/PARCELA"] = "6-ALMENDROS ZAHURDAS 2018-ALMENDROS ZAHURDAS 2018" then "F925000020 - ALMENDROS BELONA" else if [#"CULTIVO/PARCELA"] = "7-PISTACHOS ZAHURDAS 2018-PISTACHOS ZAHURDAS 2018" then "F925000014 - PISTACHOS 2017 ZAHURDA" else if [#"CULTIVO/PARCELA"] = "9-PISTACHOS P.23-24 2020-PISTACHOS P.23-24 2020" then "F925000015 - PISTACHOS 2020 MEANDRO (P23-24)" else if [#"CULTIVO/PARCELA"] = "10-OLIVAR ECO SOTO-OLIVAR ECO SOTO" then "F925000017 - OLIVAR ECOLOGICO" else if [#"CULTIVO/PARCELA"] = "18-TRIGO DURO-P13T_CORDOBA_SUR" then "F921000001 - TRIGO DURO" else [CULTIVO]),
+    #"Filas agrupadas" = Table.Group(#"CREAR PROYECTOS", {"PROYECTO"}, {{"Superficie_ha", each List.Sum([HAS]), type nullable number}})
+in
+    #"Filas agrupadas"
+```
+Riego_areas is an important table for the allocation of Aguas-Riego data. Irrigation is not always applied to the same surface area of an analytical project. Some analytical projects, such as autumn-sown vegetables or irrigated maize, can physically occupy more than one irrigated parcel. For example, maize might be grown in three different pivots simultaneously, following the same agronomic itinerary and planned for the same commercial gateway. Analytically, all these maize fields are considered a single analytical project, where the total sum of areas would represent the PROJECT area. However, in such cases, irrigation is managed at a finer scale, specifically at the level of individual irrigated parcels. This table computes these areas, as they require a different procedure than the total analytical project area. While the total sum of irrigation is treated at the analytical project level, irrigation management necessitates a more detailed scale of analysis. This is the purpose of this table: to summarize project areas by their individual irrigated parts.
+
+This code snippet is designed for data transformation in Power Query, focusing on processing data from the same Google Sheets document. It begins by importing the contents of the specified Google Sheet and extracting a table named "DATOS". The subsequent steps involve cleaning and organizing the data: unnecessary columns are removed, the first row is promoted to headers, and the data types of various columns are specified to ensure accurate processing. This includes converting the "ID" column to an integer and setting other columns to text or number formats as appropriate. A specific column, "PROYECTO ANALÍTICO", is also discarded to streamline the dataset. The code then adds a new column titled "PROYECTO", which uses conditional logic to assign project codes based on the values present in the "CULTIVO" or "CULTIVO/PARCELA" columns, ensuring that each cultivation is linked to its respective project. Finally, the data is grouped by the newly created "PROYECTO" column, calculating the total surface area in hectares for each project and resulting in a comprehensive summary of project allocations based on cultivation areas.
+
+**Riego_reparto**
+```vs
+let
+    Origen = GoogleSheets.Contents("https://docs.google.com/spreadsheets/d/1u7LYecQ7W-ffxf0UpujMYrShQ5kBqXH9RPNlwyzN0jk/edit?usp=sharing"),
+    #"Respuestas de formulario 1_Table" = Origen{[name="Respuestas de formulario 1",ItemKind="Table"]}[Data],
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Respuestas de formulario 1_Table", [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Marca temporal", type datetime}, {"FECHA", type date}, {"CULTIVO/PARCELA", type text}, {"PASES", Int64.Type}, {"PORCENTAJE%", type number}, {"HORAS", type any}, {"OBSERVACIONES", type any}, {"COEFICIENTE", type number}, {"HAS", type number}, {"TIPO", type text}, {"PASES 100%", type number}, {"M3", type number}, {"M3/HA", type number}}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Tipo cambiado",{{"PORCENTAJE%", "PORCENTAJE"}}),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Columnas con nombre cambiado",{"Marca temporal", "COEFICIENTE", "HAS", "TIPO", "PASES 100%", "M3", "M3/HA"}),
+    #"Filas filtradas3" = Table.SelectRows(#"Columnas quitadas", each ([FECHA] <> null)),
+    #"Consultas combinadas" = Table.NestedJoin(#"Filas filtradas3", {"CULTIVO/PARCELA"}, #"DATOS-RIEGO", {"CULTIVO/PARCELA"}, "DATOS", JoinKind.LeftOuter),
+    #"Se expandió DATOS" = Table.ExpandTableColumn(#"Consultas combinadas", "DATOS", {"HAS", "TIPO", "COEFICIENTE(L/M2)", "PROYECTO"}, {"HAS", "TIPO", "COEFICIENTE(L/M2)", "PROYECTO"}),
+    #"Filas ordenadas" = Table.Sort(#"Se expandió DATOS",{{"FECHA", Order.Ascending}}),
+    #"Tipo cambiado2" = Table.TransformColumnTypes(#"Filas ordenadas",{{"HORAS", type number}}),
+    #"Personalizada agregada" = Table.AddColumn(#"Tipo cambiado2", "PASES_100", each [PASES]*(1/[PORCENTAJE])),
+    #"Personalizada agregada1" = Table.AddColumn(#"Personalizada agregada", "M3", each if [TIPO]="PIVOT" then [PASES_100]*[#"COEFICIENTE(L/M2)"]*[HAS]*10 else [HORAS]*[#"COEFICIENTE(L/M2)"]*[HAS]*10),
+    #"Tipo cambiado3" = Table.TransformColumnTypes(#"Personalizada agregada1",{{"PASES_100", type number}, {"M3", type number}}),
+    #"Personalizada agregada2" = Table.AddColumn(#"Tipo cambiado3", "M3/HA", each [M3]/[HAS]),
+    #"Tipo cambiado4" = Table.TransformColumnTypes(#"Personalizada agregada2",{{"M3/HA", type number}}),
+    #"Año insertado" = Table.AddColumn(#"Tipo cambiado4", "Año", each Date.Year([FECHA]), Int64.Type),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Año insertado",2022,2022,Replacer.ReplaceValue,{"Año"}),
+    #"Filas filtradas2" = Table.SelectRows(#"Valor reemplazado", each ([FECHA] <> null)),
+
+    #"Consultas combinadas1" = Table.NestedJoin(#"Filas filtradas2", {"Año"}, #"SALDO_RIEGO La Reina", {"Año"}, "SALDO_RIEGO", JoinKind.LeftOuter),
+    #"Se expandió SALDO_RIEGO" = Table.ExpandTableColumn(#"Consultas combinadas1", "SALDO_RIEGO", {"TIPO.GASTO", "SALDO"}, {"TIPO.GASTO", "SALDO"}),
+    #"Filas filtradas1" = Table.SelectRows(#"Se expandió SALDO_RIEGO", each ([SALDO] <> null)),
+    #"Filas agrupadas" = Table.Group(#"Filas filtradas1", {"PROYECTO", "TIPO.GASTO"}, {{"M3", each List.Sum([M3]), type number}, {"SALDO", each List.Median([SALDO]), type nullable number}}),
+    #"Consultas combinadas2" = Table.NestedJoin(#"Filas agrupadas", {"SALDO"}, Riego_total, {"SALDO"}, "Riego_total", JoinKind.LeftOuter),
+    #"Se expandió Riego_total" = Table.ExpandTableColumn(#"Consultas combinadas2", "Riego_total", {"M3"}, {"Riego_total.M3"}),
+    #"Porcentaje insertado de" = Table.AddColumn(#"Se expandió Riego_total", "Porcentaje de", each [M3] / [Riego_total.M3] * 100, type number),
+    #"División insertada" = Table.AddColumn(#"Porcentaje insertado de", "División", each [Porcentaje de] / 100, type number),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"División insertada",{"Porcentaje de"}),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Columnas quitadas1",{{"División", "Peso_relativo"}}),
+    #"Personalizada agregada3" = Table.AddColumn(#"Columnas con nombre cambiado1", "Importe", each [SALDO]*[Peso_relativo]),
+    #"Multiplicación insertada" = Table.AddColumn(#"Personalizada agregada3", "Multiplicación", each [Importe] * -1, type number),
+    #"Columnas quitadas2" = Table.RemoveColumns(#"Multiplicación insertada",{"Importe"}),
+    #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Columnas quitadas2",{{"Multiplicación", "Importe_global"}}),
+    #"Personalizada agregada4" = Table.AddColumn(#"Columnas con nombre cambiado2", "PARTIDA", each "RIEGOS"),
+    #"Personalizada agregada5" = Table.AddColumn(#"Personalizada agregada4", "Campaña", each "22/23"),
+    #"Personalizada agregada6" = Table.AddColumn(#"Personalizada agregada5", "Nombre Actividad Producción", each "RIEGO"),
+    #"Personalizada agregada7" = Table.AddColumn(#"Personalizada agregada6", "Nombre Artículo", each "Riego"),
+    #"Consultas combinadas3" = Table.NestedJoin(#"Personalizada agregada7", {"PROYECTO"}, Riego_areas, {"PROYECTO"}, "Riego_areas", JoinKind.LeftOuter),
+    #"Se expandió Riego_areas" = Table.ExpandTableColumn(#"Consultas combinadas3", "Riego_areas", {"Superficie_ha"}, {"Superficie_ha"}),
+    #"Personalizada agregada8" = Table.AddColumn(#"Se expandió Riego_areas", "TIPOGRUPO", each "Gastos"),
+    #"Personalizada agregada9" = Table.AddColumn(#"Personalizada agregada8", "Importe_ha", each [Importe_global]/[Superficie_ha]),
+    #"Columnas con nombre cambiado3" = Table.RenameColumns(#"Personalizada agregada9",{{"M3", "Cantidad_global"}}),
+    #"Personalizada agregada10" = Table.AddColumn(#"Columnas con nombre cambiado3", "Cantidad_ha", each [Cantidad_global]/[Superficie_ha]),
+    #"Columnas quitadas3" = Table.RemoveColumns(#"Personalizada agregada10",{"SALDO", "Riego_total.M3", "Peso_relativo"}),
+    #"Personalizada agregada11" = Table.AddColumn(#"Columnas quitadas3", "Nombre Unidad Medida", each "M3"),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Personalizada agregada11",{{"Importe_ha", type number}, {"Cantidad_ha", type number}}),
+    #"Texto extraído después del delimitador" = Table.TransformColumns(#"Tipo cambiado1", {{"PROYECTO", each Text.AfterDelimiter(_, "- "), type text}}),
+    #"Errores reemplazados" = Table.ReplaceErrorValues(#"Texto extraído después del delimitador", {{"Cantidad_global", 0}}),
+    #"Filas filtradas" = Table.SelectRows(#"Errores reemplazados", each ([Cantidad_global] <> 0)),
+    #"Columnas quitadas4" = Table.RemoveColumns(#"Filas filtradas",{"Nombre Artículo"}),
+    #"Columna condicional agregada" = Table.AddColumn(#"Columnas quitadas4", "Nombre Artículo", each if [TIPO.GASTO] = "Variable" then "RIEGOS - GASTOS VARIABLES" else "RIEGOS - GASTOS FIJOS"),
+    #"Columnas quitadas5" = Table.RemoveColumns(#"Columna condicional agregada",{"TIPO.GASTO"}),
+    #"Columnas reordenadas" = Table.ReorderColumns(#"Columnas quitadas5",{"PROYECTO", "PARTIDA", "Cantidad_global", "Importe_global", "Campaña", "Nombre Actividad Producción", "Nombre Artículo", "Superficie_ha", "TIPOGRUPO", "Importe_ha", "Cantidad_ha", "Nombre Unidad Medida"}),
+    #"Columna multiplicada" = Table.TransformColumns(#"Columnas reordenadas", {{"Importe_global", each _ * -1, type number}}),
+    #"Columna multiplicada1" = Table.TransformColumns(#"Columna multiplicada", {{"Importe_ha", each _ * -1, type number}}),
+    #"Valor reemplazado1" = Table.ReplaceValue(#"Columna multiplicada1","RIEGOS - GASTOS FIJOS","Gastos fijos",Replacer.ReplaceText,{"Nombre Artículo"}),
+    #"Valor reemplazado2" = Table.ReplaceValue(#"Valor reemplazado1","RIEGOS - GASTOS VARIABLES","Gastos variables",Replacer.ReplaceText,{"Nombre Artículo"}),
+    #"Consulta anexada" = Table.Combine({#"Valor reemplazado2", #"Riego Villaseca"}),
+    #"Columnas quitadas6" = Table.RemoveColumns(#"Consulta anexada",{"Año"}),
+    #"Tipo cambiado6" = Table.TransformColumnTypes(#"Columnas quitadas6",{{"Nombre Unidad Medida", type text}}),
+    #"Filas filtradas4" = Table.SelectRows(#"Tipo cambiado6", each ([Cantidad_global] <> null)),
+    #"Tipo cambiado5" = Table.TransformColumnTypes(#"Filas filtradas4",{{"Nombre Unidad Medida", type text}})
+in
+    #"Tipo cambiado5"
+```
+This is my favorite table in the Aguas-Riego allocation process, as it applies the methodology followed by CLR to compute the pie-splitting, which is ultimately the primary objective of this entire table cluster. As previously described, the idea is to guarantee a systematic splitting method that adheres to three major criteria: splitting expenses in the financial overview of irrigation based on total water applied per analytical project (i.e., variable costs), by total surface area irrigated (i.e., fixed costs), and by irrigation events (specific types of expenses that are generally variable).
+
+The script is designed to process data from a Google Sheets spreadsheet. It begins by retrieving content from a specified Google Sheets URL and extracting a specific table named "Respuestas de formulario 1." The script promotes the first row of this table to headers and transforms column types to ensure they are appropriately defined (e.g., date, datetime, text, number). Subsequently, it renames certain columns, removes unnecessary ones, and filters out rows where the "FECHA" (date) column is null.
+
+The code then performs a series of nested joins to combine data with other tables, expanding and renaming columns as needed. It sorts the data by date and adds calculated columns to determine the total passes and cubic meters (M3) based on specific conditions related to the type of irrigation. Additional calculations include determining the percentage of total water used and generating new columns for financial analysis, such as global amounts and costs per hectare. The script also incorporates error handling, replaces specific values, and structures the final output to ensure clarity and consistency, culminating in a cleaned and organized dataset ready for further analysis or reporting.
 
 
-- Riego_total
-- Riego_areas
-- Riego_reparto
-- Riego_keys
+**Riego_keys**
+```vs
+let
+    Origen = Riego_reparto,
+    #"Filas agrupadas" = Table.Group(Origen, {"PROYECTO", "PARTIDA"}, {{"Recuento", each Table.RowCount(_), Int64.Type}})
+in
+    #"Filas agrupadas"
+This is a very simple script designed to create a checking table to control whether the distribution is elementary at the PROYECTO and PARTIDA levels. This is key because this table will serve as the foundation for integrating that information into the analytical model. If the distribution is not elementary-based, we will not establish a one-to-many relationship, which could result in repeated and duplicated rows of information, ultimately leading to an overestimation of final costs and water registries. It is fundamental to build control tables in a process of this nature to verify when one-to-many relationships can be preserved by using one table to feed another. This is of major importance in query programming.
+
 
 
 
