@@ -587,6 +587,7 @@ let
     #"Filas agrupadas" = Table.Group(Origen, {"PROYECTO", "PARTIDA"}, {{"Recuento", each Table.RowCount(_), Int64.Type}})
 in
     #"Filas agrupadas"
+```
 This is a very simple script designed to create a checking table to control whether the distribution is elementary at the PROYECTO and PARTIDA levels. This is key because this table will serve as the foundation for integrating that information into the analytical model. If the distribution is not elementary-based, we will not establish a one-to-many relationship, which could result in repeated and duplicated rows of information, ultimately leading to an overestimation of final costs and water registries. It is fundamental to build control tables in a process of this nature to verify when one-to-many relationships can be preserved by using one table to feed another. This is of major importance in query programming.
 
 
