@@ -363,8 +363,70 @@ After the type transformation, the code removes the "PROYECTO ANALÍTICO" column
 
 The final output of the script is the dataset with the newly added "PROYECTO" column, which enriches the data for subsequent analysis or reporting tasks. Overall, this code snippet effectively transforms and organizes the data from Google Sheets, making it more accessible for agricultural project assessments.
 
+**AGUAS-RIEGO**
+```vs
+let
+    Origen = GoogleSheets.Contents("https://docs.google.com/spreadsheets/d/1u7LYecQ7W-ffxf0UpujMYrShQ5kBqXH9RPNlwyzN0jk/edit?usp=sharing"),
+    #"Respuestas de formulario 1_Table" = Origen{[name="Respuestas de formulario 1",ItemKind="Table"]}[Data],
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Respuestas de formulario 1_Table", [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Marca temporal", type datetime}, {"FECHA", type date}, {"CULTIVO/PARCELA", type text}, {"PASES", Int64.Type}, {"PORCENTAJE%", type number}, {"HORAS", type any}, {"OBSERVACIONES", type any}, {"COEFICIENTE", type number}, {"HAS", type number}, {"TIPO", type text}, {"PASES 100%", type number}, {"M3", type number}, {"M3/HA", type number}}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Tipo cambiado",{{"PORCENTAJE%", "PORCENTAJE"}}),
+    #"Filas filtradas1" = Table.SelectRows(#"Columnas con nombre cambiado", each ([Marca temporal] <> null)),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Filas filtradas1",{"Marca temporal", "COEFICIENTE", "HAS", "TIPO", "PASES 100%", "M3", "M3/HA"}),
+    #"Consultas combinadas" = Table.NestedJoin(#"Columnas quitadas", {"CULTIVO/PARCELA"}, #"DATOS-RIEGO", {"CULTIVO/PARCELA"}, "DATOS", JoinKind.LeftOuter),
+    #"Se expandió DATOS" = Table.ExpandTableColumn(#"Consultas combinadas", "DATOS", {"HAS", "TIPO", "COEFICIENTE(L/M2)", "PROYECTO"}, {"HAS", "TIPO", "COEFICIENTE(L/M2)", "PROYECTO"}),
+    #"Filas ordenadas" = Table.Sort(#"Se expandió DATOS",{{"FECHA", Order.Ascending}}),
+    #"Personalizada agregada" = Table.AddColumn(#"Filas ordenadas", "PASES_100", each [PASES]*(1/[PORCENTAJE])),
+    #"Personalizada agregada1" = Table.AddColumn(#"Personalizada agregada", "M3", each if [TIPO]="PIVOT" then [PASES_100]*[#"COEFICIENTE(L/M2)"]*[HAS]*10 else [HORAS]*[#"COEFICIENTE(L/M2)"]*[HAS]*10),
+    #"Personalizada agregada2" = Table.AddColumn(#"Personalizada agregada1", "M3/HA", each [M3]/[HAS]),
+    #"Año insertado" = Table.AddColumn(#"Personalizada agregada2", "Año", each Date.Year([FECHA]), Int64.Type),
+    #"Filas filtradas2" = Table.SelectRows(#"Año insertado", each ([Año] = 2023)),
+    #"Consultas combinadas1" = Table.NestedJoin(#"Filas filtradas2", {"Año"}, #"SALDO_RIEGO La Reina", {"Año"}, "SALDO_RIEGO", JoinKind.LeftOuter),
+    #"Se expandió SALDO_RIEGO" = Table.ExpandTableColumn(#"Consultas combinadas1", "SALDO_RIEGO", {"TIPO.GASTO", "SALDO"}, {"TIPO.GASTO", "SALDO"}),
+    #"Filas agrupadas" = Table.Group(#"Se expandió SALDO_RIEGO", {"PROYECTO", "TIPO.GASTO"}, {{"M3", each List.Sum([M3]), type number}, {"SALDO", each List.Median([SALDO]), type nullable number}}),
+    #"Consultas combinadas2" = Table.NestedJoin(#"Filas agrupadas", {"SALDO"}, Riego_total, {"SALDO"}, "Riego_total", JoinKind.LeftOuter),
+    #"Se expandió Riego_total" = Table.ExpandTableColumn(#"Consultas combinadas2", "Riego_total", {"M3"}, {"Riego_total.M3"}),
+    #"Porcentaje insertado de" = Table.AddColumn(#"Se expandió Riego_total", "Porcentaje de", each [M3] / [Riego_total.M3] * 100, type number),
+    #"División insertada" = Table.AddColumn(#"Porcentaje insertado de", "División", each [Porcentaje de] / 100, type number),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"División insertada",{"Porcentaje de"}),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Columnas quitadas1",{{"División", "Peso_relativo"}}),
+    #"Personalizada agregada3" = Table.AddColumn(#"Columnas con nombre cambiado1", "Importe", each [SALDO]*[Peso_relativo]),
+    #"Multiplicación insertada" = Table.AddColumn(#"Personalizada agregada3", "Multiplicación", each [Importe] * -1, type number),
+    #"Columnas quitadas2" = Table.RemoveColumns(#"Multiplicación insertada",{"Importe"}),
+    #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Columnas quitadas2",{{"Multiplicación", "Importe_global"}}),
+    /* #"Filas filtradas" = Table.SelectRows(#"Columnas con nombre cambiado2", each ([PROYECTO] = "F923000001 - ESPINACAS GELAGRI")), */
+    #"Personalizada agregada4" = Table.AddColumn(#"Columnas con nombre cambiado2", "PARTIDA", each "RIEGOS"),
+    #"Personalizada agregada5" = Table.AddColumn(#"Personalizada agregada4", "Campaña", each "22/23"),
+    #"Personalizada agregada6" = Table.AddColumn(#"Personalizada agregada5", "Nombre Actividad Producción", each "RIEGO"),
+    #"Personalizada agregada7" = Table.AddColumn(#"Personalizada agregada6", "Nombre Artículo", each "Riego"),
+    #"Consultas combinadas3" = Table.NestedJoin(#"Personalizada agregada7", {"PROYECTO"}, Riego_areas, {"PROYECTO"}, "Riego_areas", JoinKind.LeftOuter),
+    #"Se expandió Riego_areas" = Table.ExpandTableColumn(#"Consultas combinadas3", "Riego_areas", {"Superficie_ha"}, {"Superficie_ha"}),
+    #"Personalizada agregada8" = Table.AddColumn(#"Se expandió Riego_areas", "TIPOGRUPO", each "Gastos"),
+    #"Personalizada agregada9" = Table.AddColumn(#"Personalizada agregada8", "Importe_ha", each [Importe_global]/[Superficie_ha]),
+    #"Columnas con nombre cambiado3" = Table.RenameColumns(#"Personalizada agregada9",{{"M3", "Cantidad_global"}}),
+    #"Personalizada agregada10" = Table.AddColumn(#"Columnas con nombre cambiado3", "Cantidad_ha", each [Cantidad_global]/[Superficie_ha]),
+    #"Columnas quitadas3" = Table.RemoveColumns(#"Personalizada agregada10",{"SALDO", "Riego_total.M3", "Peso_relativo"}),
+    #"Personalizada agregada11" = Table.AddColumn(#"Columnas quitadas3", "Nombre Unidad Medida", each "M3"),
+    #"Columnas quitadas4" = Table.RemoveColumns(#"Personalizada agregada11",{"Nombre Artículo"}),
+    #"Columna condicional agregada" = Table.AddColumn(#"Columnas quitadas4", "Nombre Artículo", each if [TIPO.GASTO] = "Variable" then "Riego - Gastos variables" else "Riego - Gastos fijos"),
+    #"Columnas quitadas5" = Table.RemoveColumns(#"Columna condicional agregada",{"TIPO.GASTO"}),
+    #"Filas filtradas" = Table.SelectRows(#"Columnas quitadas5", each ([PROYECTO] <> null and [PROYECTO] <> "-"))
+in
+    #"Filas filtradas"
+```
 
-- AGUAS-RIEGO
+With this M code, we aim to process and transform data from a Google Sheets document. It begins by importing data from the sheet, specifically selecting the table titled "Respuestas de formulario 1", which contains all the customized data from the form filled in by the person responsible for irrigation. The headers are promoted, and the data types for various columns are defined, such as dates, numbers, and text. It then filters out rows with null values in the "Marca temporal" column and removes unnecessary columns, retaining only the relevant data for the analysis.
+
+Next, the code performs a join operation, merging the filtered data with another dataset called "DATOS-RIEGO", based on the "CULTIVO/PARCELA" column. After expanding the merged columns, the rows are sorted by date. New calculated columns are added to compute values such as adjusted passes ("PASES_100"), water volume ("M3"), and water volume per hectare ("M3/HA"). "PASES_100" defines the relative speed of the pivot in percentage terms compared to its maximum designed speed, requiring proper model calibration. The data is filtered to include only records from a specific year, as the allocation of Aguas-Riego data is season-specific and should always be calculated on a year-to-date (YTD) basis. At the start of a new year, the metrics reset and need to restart from zero.
+
+A second join merges the data with another dataset, "SALDO_RIEGO La Reina", based on the "Año" column. After expanding these columns, the data is grouped by "PROYECTO" and "TIPO.GASTO", summing the water volume and calculating the median of the "SALDO" column. The code then joins this grouped data with a "Riego_total" dataset and adds a column that calculates the relative percentage of water use based on the total water ("M3"). This percentage is transformed into a relative weight for further calculations. The "SALDO_RIEGO" data is critical, as it includes the total irrigation costs, which are split by analytical projects and dates. Here, we segmented the data according to "TIPO.GASTO" (variable vs. fixed irrigation costs), as they follow different allocation criteria: variable costs are based on the water volume applied or irrigation events, while fixed costs are based on the irrigated surface area per project.
+
+Several additional columns are computed, including a global amount ("Importe_global") and water volume per hectare. The code further refines the dataset by adding labels and project details such as "PARTIDA," "Campaña," and "Nombre Actividad Producción." "PARTIDA" is a key component of the analytical system, grouping expenses and income according to major interventions in crop production (e.g., land preparation, fertilization, sowing, crop protection, irrigation, pruning, harvest, etc.). It also merges data with "Riego_areas" to include field area information, and calculates the water amount per hectare ("Cantidad_ha"). This is critical from an analytical standpoint: in farming, all unitary cash flows (or resources like water and energy) are structured per hectare, allowing us to disconnect from absolute scale and enabling comparative analysis.
+
+Finally, unnecessary columns are removed, and the dataset is filtered to exclude null or incomplete projects before outputting the transformed data. This table is the output from the Aguas-Riego cluster query. As can be observed, it includes "Cantidad" (water volume in m³) expressed in both absolute terms and per hectare for each project, as well as expenses (absolute and relative per hectare and per project). It should be noted that the M code references multiple other transformed tables that require prior data processing. Let’s now retroactively review the input tables that feed into the AGUAS-RIEGO table.
+
+
+
 - SALDO_RIEGO (farm ID)
 - Riego_total
 - Riego_areas
