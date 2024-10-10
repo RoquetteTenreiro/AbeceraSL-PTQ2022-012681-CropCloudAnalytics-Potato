@@ -425,9 +425,39 @@ Several additional columns are computed, including a global amount ("Importe_glo
 
 Finally, unnecessary columns are removed, and the dataset is filtered to exclude null or incomplete projects before outputting the transformed data. This table is the output from the Aguas-Riego cluster query. As can be observed, it includes "Cantidad" (water volume in m³) expressed in both absolute terms and per hectare for each project, as well as expenses (absolute and relative per hectare and per project). It should be noted that the M code references multiple other transformed tables that require prior data processing. Let’s now retroactively review the input tables that feed into the AGUAS-RIEGO table.
 
+**SALDO_RIEGO (farm ID)**
+```vs
+let
+    Origen = Sql.Databases("WIN-19AB\ERP"),
+    REPORTING = Origen{[Name="REPORTING"]}[Data],
+    dbo_ANALITICA_CULTIVO = REPORTING{[Schema="dbo",Item="ANALITICA_CULTIVO"]}[Data],
+    /*Aqui filtramos por area de responsabilidad - el codigo 46 del area de responsabilidad corresponde a AGUAS-RIEGOS*/
+    #"Filas filtradas2" = Table.SelectRows(dbo_ANALITICA_CULTIVO, each ([Id_AreaResponsabilidad] = 46)),
+    #"Texto insertado después del delimitador" = Table.AddColumn(#"Filas filtradas2", "Texto después del delimitador", each Text.AfterDelimiter([PROYECTO], "- "), type text),
+    #"Columna condicional agregada" = Table.AddColumn(#"Texto insertado después del delimitador", "TIPO.GASTO", each if [Texto después del delimitador] = "FUERZA" then "Variable" else if [Texto después del delimitador] = "AGUA RIEGO TRACTORES" then "Variable" else if [Texto después del delimitador] = "MOTOR CAMPEON" then "Variable" else if [Texto después del delimitador] = "JORNALES AGUA RIEGO" then "Variable" else if [Texto después del delimitador] = "OBRAS" then "Variable" else if [Texto después del delimitador] = "REPARACIONES ELECTRICAS" then "Variable" else if [Texto después del delimitador] = "REPARACIONES MECANICAS" then "Variable" else if [Texto después del delimitador] = "VARIOS" then "Variable" else if [Texto después del delimitador] = "VEHICULO " then "Variable" else "Fijo"),
+    #"Año insertado" = Table.AddColumn(#"Columna condicional agregada", "Año", each Date.Year([FECHAIMPUTACION]), Int64.Type),
+    #"CAMPAÑA VIGENTE" = Table.SelectRows(#"Año insertado", each ([EjercicioAnalitico] = "22/23 - CAMPAÑA 2022/2023" or [EjercicioAnalitico] = "23/24 - CAMPAÑA 2023/2024")),
+    #"Trimestre insertado" = Table.AddColumn(#"CAMPAÑA VIGENTE", "Trimestre", each Date.QuarterOfYear([FECHAIMPUTACION]), Int64.Type),
+    #"Filas filtradas3" = Table.SelectRows(#"Trimestre insertado", each ([SUBGRUPO] = "GAS - GASTOS")),
+    #"Columna condicional agregada1" = Table.AddColumn(#"Filas filtradas3", "coeficiente", each if [IMPORTEAPLICADO] < 0 then 1 else -1),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Columna condicional agregada1",{{"coeficiente", Int64.Type}}),
+    #"Multiplicación insertada" = Table.AddColumn(#"Tipo cambiado", "Multiplicación", each [coeficiente] * [IMPORTEAPLICADO], type number),
+    #"Filas agrupadas" = Table.Group(#"Multiplicación insertada", {"TIPOGRUPO", "TIPO.GASTO", "EjercicioAnalitico", "Año", "Trimestre"}, {{"SALDO", each List.Sum([Multiplicación]), type number}}),
+    #"Filas filtradas1" = Table.SelectRows(#"Filas agrupadas", each ([TIPOGRUPO] = "Gastos")),
+    Order_key = Table.AddColumn(#"Filas filtradas1", "Order", each [Año] * [Año] + [Trimestre], Int64.Type),
+    #"Filas ordenadas" = Table.Sort(Order_key,{{"Order", Order.Ascending}}),
+    #"Conservar las últimas filas" = Table.LastN(#"Filas ordenadas", 9),
+    #"Filas agrupadas1" = Table.Group(#"Conservar las últimas filas", {"TIPOGRUPO", "TIPO.GASTO", "Año"}, {{"SALDO", each List.Sum([SALDO]), type nullable number}}),
+    #"Filas filtradas" = Table.SelectRows(#"Filas agrupadas1", each ([Año] <> 2024))
+in
+    #"Filas filtradas"
+```
+The SALDO_RIEGO table (identified by farm ID) is a fundamental table that consolidates the total year-to-date (YTD) irrigation expenses, breaking them down by TIPO.GASTO into variable and fixed costs. This provides the cumulative expense summary, which serves as the total "pie" that will be divided across various analytical projects in the AGUAS-RIEGO table, as described earlier. The SALDO_RIEGO table is populated by financial information from the ERP, reflecting cash flows that are recorded in the ANALITICA table.
+
+The code connects to a SQL Server database ("WIN-19AB\ERP") and retrieves data from the ANALITICA_CULTIVO table within the REPORTING database, focusing specifically on records where the area of responsibility (Id_AreaResponsabilidad) is 46, corresponding to the "AGUAS-RIEGOS" section. It creates a new column that extracts text after the hyphen in the PROYECTO column and classifies the expenses into either "Variable" or "Fijo" in the TIPO.GASTO column based on specific keywords. The code also extracts the year from the FECHAIMPUTACION column, filtering the data to include only records from the 2022/2023 and 2023/2024 campaigns. It adds a column to determine the quarter of the year based on FECHAIMPUTACION and further filters the data to include only rows categorized under the SUBGRUPO "GAS - GASTOS". A new conditional column called coeficiente is created to differentiate between positive and negative values in the IMPORTEAPLICADO field, and this coeficiente is multiplied by the applied amount. The code groups the data by various fields, including TIPOGRUPO, TIPO.GASTO, and year, summing the relevant values. The dataset is then sorted by a calculated key based on the year and quarter, and only the last nine rows are retained. Finally, the data is grouped again by expense type and year, with a sum of the SALDO column, and any data from 2024 is excluded before the transformed dataset is returned.
 
 
-- SALDO_RIEGO (farm ID)
+
 - Riego_total
 - Riego_areas
 - Riego_reparto
