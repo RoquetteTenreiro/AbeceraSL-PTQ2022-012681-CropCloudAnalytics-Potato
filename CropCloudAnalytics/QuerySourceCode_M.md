@@ -593,9 +593,17 @@ This is a very simple script designed to create a checking table to control whet
 
 ### Wiseconn CropCloud Tables
 
-The Wiseconn CropCloud Tables consist of a cluster of 13 distinct tables that store data gathered from Wiseconn Sensors related to field sensing trials. Each table serves a specific purpose in the data management process. The first table is the 'SamplingZone', it plays a distinct role as it is not directly linked to the sensors. Instead, it contains geospatial data pertaining to the sampling zone where the sensors are located. This information is essential because it defines the shapefile of the monitored plot. The SamplingZone data is crucial for conducting 'mask' and 'clip' functions on satellite imagery, which helps isolate the field of interest. This is a critical step of the process as it enables the scaling of analysis from a point-based perspective to a broader field level, enhancing the overall understanding of the entire agricultural plot. 
+The Wiseconn CropCloud Tables comprise a cluster of 13 distinct tables that store data collected from Wiseconn sensors during field sensing trials. Each table serves a specific purpose in the data management process.
 
-The other tables in the cluster are dedicated to storing the data collected from the Wiseconn sensors installed in the field. Each of these tables provides data of various parameters monitored during the sensing trials. 
+The first table, named SamplingZone, has a unique role as it is not directly linked to the sensors. Instead, it contains geospatial data related to the sampling zone where the sensors are located. This information is essential as it defines the shapefile of the monitored plot. The data from the SamplingZone is crucial for conducting "mask" and "clip" functions on satellite imagery, which helps isolate the field of interest. This step is critical as it enables the scaling of analysis from a point-based perspective to a broader field level, thereby enhancing the overall understanding of the entire agricultural plot.
+
+Two additional tables provide calibration parameters and are not harvested from the sensors: the Crop Water Function and the Water Dynamics Table. The Crop Water Function offers theoretical calibration of water productivity functions based on the conservative behavior of the biomass-water relationship, as described in the following key references:
+
+- Steduto, P., Hsiao, T. C., & Fereres, E. (2007). "On the conservative behavior of biomass water productivity." Water Use Efficiency and Water Productivity, 59(2).
+
+- Raes, D., Steduto, P., Hsiao, T. C., & Fereres, E. (2009). "AquaCrop—The FAO's crop model for water productivity." Water Use Efficiency and Water Productivity, 39(5), 437-447.
+
+The remaining tables in the cluster are dedicated to storing data collected from the Wiseconn sensors installed in the field. Each of these tables provides data on various parameters monitored during the sensing trials.
 
 **Sampling zone**
 ```vs
