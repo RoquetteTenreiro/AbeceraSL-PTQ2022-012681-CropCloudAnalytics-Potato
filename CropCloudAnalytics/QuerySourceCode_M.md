@@ -616,6 +616,8 @@ let
     #"Tipo cambiado" = Table.TransformColumnTypes(#"Se expandió physicalConnection",{{"id", type text}, {"farmId", Int64.Type}, {"zoneId", Int64.Type}, {"name", type text}, {"unit", type text}, {"lastData", type number}, {"lastDataDate", type datetime}, {"monitoringTime", Int64.Type}, {"sensorDepth", Int64.Type}, {"depthUnit", type text}, {"fieldCapacity", type number}, {"readilyAvailableMoisture", type number}, {"soilMostureSensorType", type text}, {"brand", type text}, {"nodeId", Int64.Type}, {"physicalConnection.expansionPort", Int64.Type}, {"physicalConnection.expansionBoard", type text}, {"physicalConnection.nodePort", Int64.Type}, {"sensorType", type text}, {"createdAt", type datetime}})
 in
     #"Tipo cambiado"
+```
+
 
 The Wiseconn Sensors Tables API serves as the primary table for accessing keys related to each installed sensor. This information is based on the API key contained within the JSON document, which can be accessed at Wiseconn Developer Portal. The first line of the data specifies the origin through an API key, such as “vv4XnMTH6DQA4KJlDeIJ”, which is obtained from the developers' website. This key enables access to the following endpoint: https://api.wiseconn.com/farms/3615/measures
 
