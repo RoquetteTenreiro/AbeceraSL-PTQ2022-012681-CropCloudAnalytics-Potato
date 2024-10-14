@@ -591,7 +591,50 @@ in
 This is a very simple script designed to create a checking table to control whether the distribution is elementary at the PROYECTO and PARTIDA levels. This is key because this table will serve as the foundation for integrating that information into the analytical model. If the distribution is not elementary-based, we will not establish a one-to-many relationship, which could result in repeated and duplicated rows of information, ultimately leading to an overestimation of final costs and water registries. It is fundamental to build control tables in a process of this nature to verify when one-to-many relationships can be preserved by using one table to feed another. This is of major importance in query programming.
 
 
+### Wiseconn CropCloud Tables
 
+The Wiseconn CropCloud Tables consist of a cluster of 13 distinct tables that store data gathered from Wiseconn Sensors related to field sensing trials. Each table serves a specific purpose in the data management process. The first table is the 'SamplingZone', it plays a distinct role as it is not directly linked to the sensors. Instead, it contains geospatial data pertaining to the sampling zone where the sensors are located. This information is essential because it defines the shapefile of the monitored plot. The SamplingZone data is crucial for conducting 'mask' and 'clip' functions on satellite imagery, which helps isolate the field of interest. This is a critical step of the process as it enables the scaling of analysis from a point-based perspective to a broader field level, enhancing the overall understanding of the entire agricultural plot. 
+
+The other tables in the cluster are dedicated to storing the data collected from the Wiseconn sensors installed in the field. Each of these tables provides data of various parameters monitored during the sensing trials. 
+
+**Sampling zone**
+```vs
+let
+    Origen = R.Execute("library(sf)#(lf)#(lf)# Load spatial data#(lf)SamplingZone <- read_sf(""C:/DATOS/Proyecto Power BI/PROYECTOS_POWER BI/15_PROYECTO_WISECONN_SISTAGRO/Spatial Data/GFAM-2024-02-22 14_40.shp"")#(lf)#(lf)F.dots <- st_centroid(SamplingZone)#(lf)#(lf)st_crs(F.dots) <- st_crs(""+proj=longlat +datum=WGS84 +no_defs"")"),
+    #"Filas filtradas" = Table.SelectRows(Origen, each ([Name] = "F.dots")),
+    #"Se expandió Value" = Table.ExpandTableColumn(#"Filas filtradas", "Value", {"Name", "geometry"}, {"Name.1", "geometry"})
+in
+    #"Se expandió Value"
+```
+
+**API - Wiseconn Sensors**
+let
+    Origen = Json.Document(Web.Contents("https://api.wiseconn.com/farms/3615/measures", [Headers=[api_key="vv4XnMTH6DQA4KJlDeIJ"]])),
+    #"Convertida en tabla" = Table.FromList(Origen, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Se expandió Column1" = Table.ExpandRecordColumn(#"Convertida en tabla", "Column1", {"id", "farmId", "zoneId", "name", "unit", "lastData", "lastDataDate", "monitoringTime", "sensorDepth", "depthUnit", "fieldCapacity", "readilyAvailableMoisture", "soilMostureSensorType", "brand", "nodeId", "physicalConnection", "sensorType", "createdAt"}, {"id", "farmId", "zoneId", "name", "unit", "lastData", "lastDataDate", "monitoringTime", "sensorDepth", "depthUnit", "fieldCapacity", "readilyAvailableMoisture", "soilMostureSensorType", "brand", "nodeId", "physicalConnection", "sensorType", "createdAt"}),
+    #"Se expandió physicalConnection" = Table.ExpandRecordColumn(#"Se expandió Column1", "physicalConnection", {"expansionPort", "expansionBoard", "nodePort"}, {"physicalConnection.expansionPort", "physicalConnection.expansionBoard", "physicalConnection.nodePort"}),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Se expandió physicalConnection",{{"id", type text}, {"farmId", Int64.Type}, {"zoneId", Int64.Type}, {"name", type text}, {"unit", type text}, {"lastData", type number}, {"lastDataDate", type datetime}, {"monitoringTime", Int64.Type}, {"sensorDepth", Int64.Type}, {"depthUnit", type text}, {"fieldCapacity", type number}, {"readilyAvailableMoisture", type number}, {"soilMostureSensorType", type text}, {"brand", type text}, {"nodeId", Int64.Type}, {"physicalConnection.expansionPort", Int64.Type}, {"physicalConnection.expansionBoard", type text}, {"physicalConnection.nodePort", Int64.Type}, {"sensorType", type text}, {"createdAt", type datetime}})
+in
+    #"Tipo cambiado"
+
+The Wiseconn Sensors Tables API serves as the primary table for accessing keys related to each installed sensor. This information is based on the API key contained within the JSON document, which can be accessed at Wiseconn Developer Portal. The first line of the data specifies the origin through an API key, such as “vv4XnMTH6DQA4KJlDeIJ”, which is obtained from the developers' website. This key enables access to the following endpoint: https://api.wiseconn.com/farms/3615/measures
+
+In this URL, "3615" represents the ID of the farm (or sampling unit), and the API key is georeferenced to pinpoint the exact location from which data is being collected. 
+
+An API key is a unique identifier used to authenticate a user, developer, or application when accessing an API (Application Programming Interface). In the context of cloud computing, API keys play a crucial role in ensuring secure and controlled access to services and data. They help track usage and limit access to authorized users, safeguarding the integrity of the system and its data. Additionally, this license allows the App to make queries to the API to receive Customer data (the “Content”) hosted on the Service, to write data to the Customer’s account, and to generate irrigation schedules or commands for the Customer’s farm via the Service. The Licensee acknowledges that all access to and use of Customer data is contingent upon the Customer's consent, which may be given or withdrawn at any time at their discretion. These are critical points of interest regarding data privacy, legal protection, and accessibility, which are essential for building trustworthy networks of data among organizations in the farming sector.
+
+
+- Crop Water Functions
+- API SWC (20 cm)
+- API SWC (30 cm)
+- API SWC (40 cm)
+- API SWC (50 cm)
+- API SWC (60 cm)
+- API Temperature
+- API Rain
+- API ETo
+- Field Validation Data (crop ID)
+- HI (crop ID)
 
 ## Other Queries
 Include the queries responsible for loading the transformed data into the appropriate destinations (e.g., databases, data warehouses).
