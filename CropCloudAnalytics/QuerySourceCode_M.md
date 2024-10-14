@@ -626,26 +626,93 @@ let
 in
     #"Tipo cambiado"
 ```
-
-
 The Wiseconn Sensors Tables API serves as the primary table for accessing keys related to each installed sensor. This information is based on the API key contained within the JSON document, which can be accessed at Wiseconn Developer Portal. The first line of the data specifies the origin through an API key, such as “vv4XnMTH6DQA4KJlDeIJ”, which is obtained from the developers' website. This key enables access to the following endpoint: https://api.wiseconn.com/farms/3615/measures
 
 In this URL, "3615" represents the ID of the farm (or sampling unit), and the API key is georeferenced to pinpoint the exact location from which data is being collected. 
 
 An API key is a unique identifier used to authenticate a user, developer, or application when accessing an API (Application Programming Interface). In the context of cloud computing, API keys play a crucial role in ensuring secure and controlled access to services and data. They help track usage and limit access to authorized users, safeguarding the integrity of the system and its data. Additionally, this license allows the App to make queries to the API to receive Customer data (the “Content”) hosted on the Service, to write data to the Customer’s account, and to generate irrigation schedules or commands for the Customer’s farm via the Service. The Licensee acknowledges that all access to and use of Customer data is contingent upon the Customer's consent, which may be given or withdrawn at any time at their discretion. These are critical points of interest regarding data privacy, legal protection, and accessibility, which are essential for building trustworthy networks of data among organizations in the farming sector.
 
+**Crop Water Functions**
+```vs
+let
+    Origen = Excel.Workbook(File.Contents("C:\DATOS\Proyecto Power BI\PROYECTOS_POWER BI\15_PROYECTO_WISECONN_SISTAGRO\Potato WP.xlsx"), null, true),
+    Folha1_Sheet = Origen{[Item="Folha1",Kind="Sheet"]}[Data],
+    #"Encabezados promovidos" = Table.PromoteHeaders(Folha1_Sheet, [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Y = f (T) [ton/ha/mm]", type number}, {"Source", type text}, {"Water (mm)", Int64.Type}, {"Yield (ton/ha)", type number}, {"N - level", type text}}),
+    #"Filas filtradas" = Table.SelectRows(#"Tipo cambiado", each ([#"Y = f (T) [ton/ha/mm]"] <> null))
+in
+    #"Filas filtradas"
+```
 
-- Crop Water Functions
-- API SWC (20 cm)
-- API SWC (30 cm)
-- API SWC (40 cm)
-- API SWC (50 cm)
-- API SWC (60 cm)
-- API Temperature
-- API Rain
-- API ETo
-- Field Validation Data (crop ID)
-- HI (crop ID)
+**API SWC (depth)**
+```vs
+let
+    Origen = Json.Document(Web.Contents("https://api.wiseconn.com/measures/1-396644/data?initTime=2024-05-01T00:00:00&endTime=2024-07-10T00:00:00", [Headers=[api_key="vv4XnMTH6DQA4KJlDeIJ"]])),
+    #"Convertida en tabla" = Table.FromList(Origen, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Se expandió Column1" = Table.ExpandRecordColumn(#"Convertida en tabla", "Column1", {"time", "value"}, {"time", "value"}),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Se expandió Column1",{{"time", type datetime}, {"value", type number}}),
+    #"Fecha insertada" = Table.AddColumn(#"Tipo cambiado", "Fecha", each DateTime.Date([time]), type date),
+    #"Filas agrupadas" = Table.Group(#"Fecha insertada", {"Fecha"}, {{"SWC_20", each List.Average([value]), type nullable number}})
+in
+    #"Filas agrupadas"
+```
+
+The SWC tables are all structurally identical; they begin by calling the API key corresponding to the specific measure ID (in this case, 1-396644 for the soil volumetric water content measured at 20 cm depth sensor) for a given time window (no more than 3 months: data?initTime=2024-05-01T00:00:00&endTime=2024-07-10T00:00:00). This aspect represents a limitation of the current system, as the Wiseconn API solution does not allow us to retrieve data for periods longer than 3 months. However, I have devised a workaround for this issue, which involves replicating the same data in 3-month intervals. We can call successive time periods on different tables and perform an 'annex-query' operation to insert these tables into a single table, ultimately consolidating all the consulted time periods.
+
+The code executes some basic data transformation functions to correct column names and properly order the variables. Then, we use table group functions to transform data from a 15-minute time resolution into daily values, as our water production model operates on daily time steps.
+
+**API Temperature**
+```vs
+let
+    Origen = Json.Document(Web.Contents("https://api.wiseconn.com/measures/1-396664/data?initTime=2024-05-01T00:00:00&endTime=2024-07-10T00:00:00", [Headers=[api_key="vv4XnMTH6DQA4KJlDeIJ"]])),
+    #"Convertida en tabla" = Table.FromList(Origen, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Se expandió Column1" = Table.ExpandRecordColumn(#"Convertida en tabla", "Column1", {"time", "value"}, {"time", "value"}),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Se expandió Column1",{{"time", type datetime}, {"value", type number}}),
+    #"Fecha insertada" = Table.AddColumn(#"Tipo cambiado", "Fecha", each DateTime.Date([time]), type date),
+    #"Filas agrupadas" = Table.Group(#"Fecha insertada", {"Fecha"}, {{"T", each List.Average([value]), type nullable number}})
+in
+    #"Filas agrupadas"
+```
+The same process is replicated here by adjusting the measure IDs, as well as for the Rain API from the pluviometer and the ETo API provided by the weather station.
+
+**Field Validation Data (crop ID)**
+```vs
+let
+    Origen = Csv.Document(File.Contents("C:\DATOS\Proyecto Power BI\PROYECTOS_POWER BI\15_PROYECTO_WISECONN_SISTAGRO\Potato - Rojas Farm\Patatas_Rojas_Validation_Dataset.txt"),[Delimiter="	", Columns=8, Encoding=1252, QuoteStyle=QuoteStyle.None]),
+    #"Encabezados promovidos" = Table.PromoteHeaders(Origen, [PromoteAllScalars=true]),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Value", type number}}),
+    #"Tipo cambiado con configuración regional" = Table.TransformColumnTypes(#"Tipo cambiado1", {{"Date", type date}}, "es-ES"),
+    #"Filas filtradas 20.6" = Table.SelectRows(#"Tipo cambiado con configuración regional", each not ([Date] = #date(2024, 6, 20) and [Parameter_code] = "TW" and ([Value] < 100))),
+    #"Filas filtradas 04.7" = Table.SelectRows(#"Filas filtradas 20.6", each not ([Date] = #date(2024, 7, 4) and [Parameter_code] = "TW" and ([Value] < 120))),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Filas filtradas 04.7",{{"iD", Int64.Type}, {"Sample iD", type text}, {"Parameter_code", type text}, {"Date", type date}, {"Value", type number}, {"Parameter", type text}, {"Method", type text}, {"Unit", type text}}),
+    #"Filas agrupadas" = Table.Group(#"Tipo cambiado", {"Parameter_code", "Date", "Parameter", "Unit"}, {{"Value", each List.Average([Value]), type nullable number}, {"TQ", each Table.RowCount(_), Int64.Type}}),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Filas agrupadas",#date(2024, 7, 4),#date(2024, 7, 2),Replacer.ReplaceValue,{"Date"})
+in
+    #"Valor reemplazado"
+```
+The Field Validation Data is a crucial dataset that must be populated with field records of biomass samples. This dataset is built according to a sampling scheme governed by one of two objectives: either to select visually comparable zones for sampling or to sample areas in close proximity that do not differ significantly from the sensor points.
+
+The data was collected on a weekly to biweekly basis, following a long-row structure table with variable columns. A code ID was used to distinguish the crop traits sampled (e.g., AB for aerial biomass, RW for root weight, TW for tuber weight).
+
+In our analysis, the M code applies outlier exclusion rules. This became necessary when we observed, in the case of potatoes, a second tuber initiation occurring around 60-80 days after sowing. This event negatively affected the validation dataset because we used a count function to determine the number of tubers, which is essential for computing individual tuber weight. As second tuberization occurred, the total tuber count increased more than the relative contribution of additional weight to the total yield, resulting in an underestimation of individual tuber weight. We began rejecting tubers with very low weight and size after the middle of the growth cycle to improve accuracy.
+
+The sampling method involved field sampling, sample weighing, fresh and dry mass estimation, and recording the data in an Excel file, which is stored on the company's main server, as indicated in the first step of this code chunk: C:\DATOS\Proyecto Power BI\PROYECTOS_POWER BI\15_PROYECTO_WISECONN_SISTAGRO\Potato - Rojas Farm\Patatas_Rojas_Validation_Dataset.txt.
+
+**HI (crop ID)**
+```vs
+let
+    Origen = Excel.Workbook(File.Contents("C:\DATOS\Proyecto Power BI\PROYECTOS_POWER BI\15_PROYECTO_WISECONN_SISTAGRO\Potato WP.xlsx"), null, true),
+    HI_Sheet = Origen{[Item="HI",Kind="Sheet"]}[Data],
+    #"Encabezados promovidos" = Table.PromoteHeaders(HI_Sheet, [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Source", type text}, {"HI Value", type number}, {"Water level", type text}})
+in
+    #"Tipo cambiado"
+```
+We identify a key step for yield estimation in tuber crops, such as potatoes: the transition from estimated biomass to tuber weight, which relies on the harvest index. The final tuber yield is not solely determined by the total accumulated biomass of the plant at the end of the growing cycle; it also depends on the partitioning of biomass from vegetative aerial organs to underground tubers. This can be mathematically simplified by the concept of the harvest index, which corresponds to the ratio of the plant's harvestable product weight (i.e., tubers) to the total plant biomass, including both aerial and underground organs.
+
+However, this classical rule is not static, as partitioning is a process influenced by the crop’s stress status, which can be affected by nutrient and water levels. Since our model is water-driven and focused on plant-water dynamics, our HI crop table provides the necessary details to adjust the daily harvest index (HI) value based on the mean volumetric water content of the soil at any given time.
+
+To address this, we conducted a focused literature review to build a generic Excel database that links the expected harvest index to water levels. The model uses DAX to compute a conditional function that applies a daily harvest index value based on specific soil moisture levels. These DAX operations will be explained later, as we are still reviewing the ETL phase.
 
 ## Other Queries
 Include the queries responsible for loading the transformed data into the appropriate destinations (e.g., databases, data warehouses).
