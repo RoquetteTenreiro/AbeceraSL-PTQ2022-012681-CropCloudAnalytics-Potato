@@ -608,6 +608,7 @@ in
 ```
 
 **API - Wiseconn Sensors**
+```vs
 let
     Origen = Json.Document(Web.Contents("https://api.wiseconn.com/farms/3615/measures", [Headers=[api_key="vv4XnMTH6DQA4KJlDeIJ"]])),
     #"Convertida en tabla" = Table.FromList(Origen, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
