@@ -748,7 +748,7 @@ In Power Query, the DAX measures table is a designated space for storing custom 
 
 The Roles table in Power BI is essential for implementing row-level security, segmenting data access, enhancing collaboration, testing security configurations, and creating dynamic security solutions. This functionality ensures that sensitive data is protected and that users only have access to the information relevant to their specific roles.
 
-In this context, we specify all Abecera LS employees who have direct access to Power BI services for reports and dashboard visualization. Additionally, we define which email address or employee has access to each component of the reports and dashboards.
+In this context, we specify all Abecera SL employees who have direct access to Power BI services for reports and dashboard visualization. Additionally, we define which email address or employee has access to each component of the reports and dashboards.
 
 ## DAX code
 Provide examples of how to utilize the queries effectively within CropCloud Analytics, including any necessary parameters or configuration settings.
