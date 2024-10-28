@@ -750,6 +750,8 @@ The Roles table in Power BI is essential for implementing row-level security, se
 
 In this context, we specify all Abecera SL employees who have direct access to Power BI services for reports and dashboard visualization. Additionally, we define which email address or employee has access to each component of the reports and dashboards.
 
+Once the entire ETL process is completed in the Query section, we load all the tables into the data model, and the phase of DAX coding and reporting visual setup begins.
+
 ## DAX code
 Provide examples of how to utilize the queries effectively within CropCloud Analytics, including any necessary parameters or configuration settings.
 
