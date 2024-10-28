@@ -715,7 +715,40 @@ However, this classical rule is not static, as partitioning is a process influen
 To address this, we conducted a focused literature review to build a generic Excel database that links the expected harvest index to water levels. The model uses DAX to compute a conditional function that applies a daily harvest index value based on specific soil moisture levels. These DAX operations will be explained later, as we are still reviewing the ETL phase.
 
 ## Other Queries
-Include the queries responsible for loading the transformed data into the appropriate destinations (e.g., databases, data warehouses).
+
+**fCalendario**
+```vs
+let
+    Origen = (FI as date, FF as date)=>
+    let
+        Duracion =  Duration.TotalDays(FF-FI) + 1,
+        ListaFechas = List.Dates(FI,Duracion,#duration(1,0,0,0)),
+        TablaFechas = Table.FromList(ListaFechas, Splitter.SplitByNothing(), type table [Fecha = date], null, ExtraValues.Error),
+        ColumnaAño = Table.AddColumn(TablaFechas,"Año", each Date.Year([Fecha]), Int64.Type),
+        ColumnaNroMes = Table.AddColumn(ColumnaAño,"Nro. Mes", each Date.Month([Fecha]), Int64.Type),
+        ColumnaMes = Table.AddColumn(ColumnaNroMes,"Mes", each Date.MonthName([Fecha]), type text),
+        ColumnaTrimestre = Table.AddColumn(ColumnaMes,"Trimestre", each Text.From(Date.QuarterOfYear([Fecha])) & "T", type text),
+        ColumnaSemana = Table.AddColumn(ColumnaTrimestre,"Semana", each Date.WeekOfYear([Fecha],Day.Monday), Int64.Type),
+        ColumnaDiaSemana = Table.AddColumn(ColumnaSemana,"Día Semana", each if Date.DayOfWeek([Fecha],Day.Monday) = 0 then 7 else Date.DayOfWeek([Fecha],Day.Monday),Int64.Type),
+        ColumnaYYMM = Table.AddColumn(ColumnaDiaSemana, "YYMM", each [Año]*100 + [Nro. Mes], Int64.Type)  
+    in
+       ColumnaYYMM
+in 
+    Origen
+```
+This code generates a detailed date table for a specified date range. The function accepts two parameters: FI (the start date) and FF (the end date). It begins by calculating the duration between these dates in days, adding one to include the end date. Then, it creates a list of consecutive dates from FI to FF with a one-day increment. This list is converted into a table with a single column named Fecha, containing all dates in the specified range. The function proceeds to add columns to enrich the table with additional date attributes. The "Año" column extracts the year from each date, while the "Nro. Mes" and "Mes" columns provide the numeric month and month name, respectively. The "Trimestre" column represents the quarter of the year with a suffix "T" (e.g., "1T" for Q1). For weekly tracking, the "Semana" column calculates the week of the year, assuming weeks start on Monday, and "Día Semana" indicates the day of the week numerically, setting Monday as 1 and Sunday as 7. Finally, a "YYMM" column is added, which formats the year and month in a YYMM format (e.g., "202301" for January 2023), combining the year and numeric month into a single value. Once all columns are added, the table is outputted, providing a date table enriched with detailed time-related fields, which can be highly useful for time-based data analysis and reporting tasks.
+
+We opted to set a calendar date dimension table in this context because, in a star schema model in Power BI, a calendar date dimension is essential for organizing and analyzing time-series data, particularly within agricultural data science applications. This structure supports efficient DAX computations, allowing consistent filtering, aggregation, and comparison across various date attributes, such as year, month, and season—critical for tracking crop cycles, weather patterns, and yield trends. Using a calendar date table enables us to align agricultural events like planting and harvest dates with external variables such as rainfall or temperature, improving predictive modeling. Ultimately, this unified date reference enhances the accuracy of insights, empowering data-driven decisions in agriculture.
+
+**DAX**
+
+In Power Query, the DAX measures table is a designated space for storing custom DAX (Data Analysis Expressions) calculations within a Power BI data model. Typically created as an empty table using the "Enter Data" feature, it is labeled with a clear name like "Measures" or "Calculations" to differentiate it from data tables. Users can add individual DAX measures via the "New Measure" option, with each measure having a unique name and DAX formula. This measures table serves as a centralized reference for calculations, streamlining the data model and simplifying the process of finding and modifying measures. The DAX measures are dynamic, context-sensitive, and recalibrate based on slicers, filters, and user interactions, enabling real-time insights in Power BI reports. By centralizing measures, Power BI models become cleaner and more intuitive, especially useful in complex analytical projects requiring a consistent calculation structure.
+
+**Roles**
+
+The Roles table in Power BI is essential for implementing row-level security, segmenting data access, enhancing collaboration, testing security configurations, and creating dynamic security solutions. This functionality ensures that sensitive data is protected and that users only have access to the information relevant to their specific roles.
+
+In this context, we specify all Abecera LS employees who have direct access to Power BI services for reports and dashboard visualization. Additionally, we define which email address or employee has access to each component of the reports and dashboards.
 
 ## DAX code
 Provide examples of how to utilize the queries effectively within CropCloud Analytics, including any necessary parameters or configuration settings.
