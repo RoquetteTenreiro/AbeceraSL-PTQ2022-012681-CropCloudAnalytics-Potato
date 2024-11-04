@@ -756,7 +756,21 @@ Once the entire ETL process is completed in the Query section, we load all the t
 
 **Data Model (star-model) of CropCloudAnalytics**
 
-The proposed Star Data Model for CropCloudAnalytics is centered around the ANALITICA_ERP table, sourced directly from the Abecera SL server. This model features a primary fact table, Fact_CropAnalytics, which includes key metrics such as quantity, revenue, and cost, linked to various dimension tables that provide contextual information. These dimensions include Dim_Crop, Dim_Date, Dim_Location, and Dim_Farmer, offering attributes that enable users to slice and analyze data effectively. The Power Query ETL process is employed to extract, transform, and load the data into these tables, ensuring it is clean and structured for analysis. Additionally, DAX measures are implemented for calculating total metrics, gross profit, and averages, facilitating insightful reporting and analytics within the data model. This setup aims to optimize data organization and enhance analytical capabilities in CropCloudAnalytics.
+The proposed Star Data Model for CropCloudAnalytics is centered around the `ANALITICA_ERP` table, sourced directly from the Abecera SL server. This model features a primary fact table, `ANALITICA_ERP`, which includes key metrics such as quantity, revenue, and cost, linked to various dimension tables that provide contextual information. These dimensions include `Dim_Crop` (Cultivos), `Dim_Date` (Calendario), `Dim_Farm` (Fincas), `Dim_Company` (Sociedades), and `Dim_Parts` (Partes de Campo), which correspond to the tracking of field operation activities where products, operations, and tasks are recorded. These attributes enable users to slice and analyze data effectively. The Power Query ETL process is employed to extract, transform, and load the data into these tables, ensuring it is clean and structured for analysis as previously described. Additionally, DAX measures are implemented for calculating total metrics, gross profit, and averages, facilitating insightful reporting and analytics within the data model. This setup aims to optimize data organization and enhance analytical capabilities in CropCloudAnalytics.
+
+The following table outlines all the linked dimensions required to construct the star model we designed.
+
+| ¿Origen en el ERP? | ORIGEN                                        | Nombre.Tabla               | Dimensiones compartidas |       |       |       |       |       |       |
+|---------------------|-----------------------------------------------|----------------------------|-------------------------|-------|-------|-------|-------|-------|-------|
+|                     |                                               |                            | ID.PROYECTO            | ID.AREA | ID.PARTE | ID.PARTE.ARTICULO | ID.FINCA | Fecha |
+| Sí                  | [ANALITICA(Articulo)] + [Historicos] + [RepartoRiego] | FACT-TABLE                 | x                       | x     | x     | x     | x     | x     |
+| Sí                  | [Proyecto.Cultivos]                          | Sociedades                 | x                       |       |       |       |       |       |
+| No                  | [Fincas]                                     | Fincas                     |                         | x     |       |       |       |       |
+| Sí                  | [Cultivos] + [Proyecto.Cultivos]            | Areas                      |                         | x     |       |       |       |       |
+| No                  | [Calendario]                                 | Calendario                 |                         |       |       |       | x     |       |
+| Sí                  | [PARTES]                                     | Partes de Campo            | x                       | x     | x     | x     |       |       |
+| No                  | [AguasRiego]                                 | Riego.Reparto              | x                       |       |       |       | x     |       |
+
 
 ![Star-Data-Model Design](https://github.com/RoquetteTenreiro/AbeceraSL-PTQ2022-012681-CropCloudAnalytics-Potato/blob/main/CropCloudAnalytics/Star%20Model%20Design%20-%20CropCloudAnalytics.png)
 
