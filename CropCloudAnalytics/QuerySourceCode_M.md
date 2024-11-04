@@ -753,7 +753,28 @@ In this context, we specify all Abecera SL employees who have direct access to P
 Once the entire ETL process is completed in the Query section, we load all the tables into the data model, and the phase of DAX coding and reporting visual setup begins.
 
 ## DAX code
-Provide examples of how to utilize the queries effectively within CropCloud Analytics, including any necessary parameters or configuration settings.
+
+**DAX Measures for CropCloudAnalytics**
+
+The following DAX scripts contain various functions developed for CropCloudAnalytics. These measures encompass aspects such as biomass production, water consumption attributed to transpiration as inferred by soil water probes, soil water dynamics modeling including hydraulic properties parameterization, field sampling data cleaning and usage, harvest index modeling as a function of soil water content, and accounting analytics including FRC-, TCB-, YTD-metrics, income estimation, cost tracking, and margin decomposition. Additionally, plant counting measures and averaging measures, as well as model error assessments are also included. The following script serves as a reference for these functionalities.
+
+**1. Accumulated Biomass (ton/ha)**
+Calculates the total accumulated biomass over time, adjusting for an initial state.
+```dax
+Accumulated Biomass (ton/ha) = 
+VAR InitialState = 2250
+VAR CurrentDate = MAX('Wiseconn Data'[Date])
+RETURN
+CALCULATE (
+    SUMX(
+        FILTER(
+            ALL('Wiseconn Data'),
+            'Wiseconn Data'[Date] <= CurrentDate
+        ),
+        [Biomass]
+    ) + InitialState
+)
+```
 
 ## Notes and Comments
 Include any additional notes, comments, or considerations relevant to the Power Query M source code.
