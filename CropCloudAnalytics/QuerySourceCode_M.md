@@ -1007,7 +1007,153 @@ AVERAGEX (
 )
 ```
 
+**19. Average of Dotacion Cantidad**
 
+Calculates the average quantity allocated per project.
+
+```dax
+AVERAGE of Dotacion Cantidad = 
+[SUMX Dotacion by PROYECTO] / [SUMX Superficie]
+```
+
+
+**20. Average of Importe_ha by PROYECTO and Campaña**
+
+Calculates the average import per hectare grouped by project and campaign.
+
+```dax
+AVERAGEX of Importe_ha by PROYECTO and Campaña = 
+AVERAGEX (
+    SUMMARIZE (
+        ANALITICA_ERP,
+        ANALITICA_ERP[PROYECTO],
+        ANALITICA_ERP[Campaña], 
+        "TotalImporte_ha", SUM(ANALITICA_ERP[Importe_ha])
+    ),
+    [TotalImporte_ha]
+)
+```
+
+**21. Average of Superficie_ha**
+
+Calculates the average surface area.
+
+```dax
+AVERAGEX of Superficie_ha = 
+AVERAGEX( Areas, Areas[Superficie_ha] )
+```
+
+
+**22. Model Error Tuber**
+
+Assesses model error specifically for tubers, comparing yield to field samples.
+
+```dax
+Model Error Tuber = 
+VAR TuberYield = [Tuber Yield (Kg/ha)]
+VAR FieldSampleTuber = [Field Sample Tuber FM (kg/ha)]
+VAR ErrorValue = 
+    IF(
+        FieldSampleTuber <> 0,
+        (TuberYield - FieldSampleTuber) / FieldSampleTuber,
+        BLANK()
+    )
+RETURN
+IF(
+    NOT(ISBLANK(ErrorValue)),
+    ABS(ErrorValue),
+    BLANK()
+)
+```
+
+
+**23. SUMX Dotacion by PROYECTO**
+
+Calculates the total quantity allocated per project.
+
+```dax
+SUMX Dotacion by PROYECTO = 
+VAR Cantidad_global_by_PROYECTO =
+    SUMMARIZE ( Riego_reparto, Riego_keys[PROYECTO] )
+VAR Result =
+    SUMX (
+        Cantidad_global_by_PROYECTO,
+        CALCULATE ( AVERAGE( Riego_reparto[Cantidad_global] ) )
+    )
+RETURN
+    Result
+```
+
+**24. SUMX Superficie**
+
+Calculates the total surface area.
+
+```dax
+SUMX Superficie = 
+SUMX (
+    Areas,
+    [Superficie_ha]
+)
+```
+
+**25. T (mm)**
+
+Calculates total soil water change.
+
+```dax
+T (mm) = 
+SUMX (
+    'Wiseconn Data',
+    [ΔSWC]
+)
+```
+
+
+**26. T acumulado (mm)**
+Calculates the accumulated soil water change up to the current date.
+
+```dax
+T acumulado (mm) = 
+CALCULATE (
+    [T (mm)],
+    FILTER (
+        ALL('Wiseconn Data'),
+        'Wiseconn Data'[Date] <= MAX('Wiseconn Data'[Date])
+    )
+)
+```
+
+**27. Fixed Cost Measure**
+ 
+Calculates fixed costs for projects and campaigns, averaged over total import.
+
+```dax
+Fixed Cost Measure = 
+CALCULATE (
+    AVERAGEX (
+        SUMMARIZE (
+            ANALITICA_ERP,
+            ANALITICA_ERP[PROYECTO],
+            ANALITICA_ERP[Campaña],
+            "TotalImporte_ha", SUM ( ANALITICA_ERP[Importe_ha] )
+        ),
+        [TotalImporte_ha]
+    ),
+    ALL ( PARTES_ERP[Nombre Familia Artículo] )
+)
+```
+
+
+**28. FRC Income and Cost**
+
+Provides insights into fixed cost and income metrics, essential for overall financial analysis.
+
+```dax
+FRC Cost = ([YTD Costs]) * [AVERAGEX of Superficie_ha]
+FRC Income = [YTD Income] * [AVERAGEX of Superficie_ha]
+```
+
+These measures provide a complete framework for analyzing agricultural data, focusing on water dynamics, biomass production, financial metrics, and model accuracy. The structured DAX codes presented here serve as the basis reference for CropCloudAnalytics.
 
 
 
