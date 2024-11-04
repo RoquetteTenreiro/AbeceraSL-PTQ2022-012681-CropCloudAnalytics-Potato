@@ -1182,6 +1182,23 @@ These measures provide a complete framework for analyzing agricultural data, foc
 
 
 ## Notes and Comments
-Include any additional notes, comments, or considerations relevant to the Power Query M source code.
+
+- Data Analysis: Allows users to perform advanced analyses of data related to crop performance, soil conditions, climate, and other factors that affect crop development.
+
+- Data Visualization: Provides capabilities to create interactive visualizations and dashboards that help farmers and managers interpret information more clearly and effectively.
+
+- Integration of Different Data Sources: Facilitates the integration of various data sources, allowing for a more comprehensive view of agricultural performance and enabling informed decision-making.
+
+- DAX Functions: Utilizes the DAX (Data Analysis Expressions) language to perform calculations and queries on the data, thereby enhancing the flexibility and power of the analysis.
+
+- Access to Documentation: Provides access to documents that detail the code of queries and DAX functions, as well as examples of projects and dashboards, making their use and learning easier.
+
+The CropCloudAnalytics tool provides us with detailed monitoring and allows for the development of advisory services based on digital and real-time information. It integrates technical and financial data to optimize agricultural management and promote more efficient and sustainable farming practices.
+
+During the first 12 months of the project, we conducted trials on vegetable crops, such as spinach and potatoes, achieving promising levels of accuracy in yield estimates. The trials showed positive results: the biomass estimate for spinach had a margin of error of less than 5%, while for potatoes it ranged between 14% and 19%.
+
+For a more thorough analysis of the developed model, it is recommended to consult the previously mentioned GitHub repository, where all the documentation and necessary resources for a deep understanding of the functionalities and methodologies employed are available. For an interactive visualization of the developing model, please check out our presentation video on YouTube.
+
+[Video about CropCloudAnalytics on YouTube](https://youtu.be/GUIAKOHFMBE?si=zH8XhXNvAtL9cSTO)
 
 
