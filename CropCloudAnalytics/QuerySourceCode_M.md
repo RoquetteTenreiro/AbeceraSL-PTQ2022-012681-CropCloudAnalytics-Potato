@@ -752,7 +752,12 @@ In this context, we specify all Abecera SL employees who have direct access to P
 
 Once the entire ETL process is completed in the Query section, we load all the tables into the data model, and the phase of DAX coding and reporting visual setup begins.
 
-## DAX code
+## Data Model and DAX code
+
+**Data Model (star-model) of CropCloudAnalytics**
+
+![Star-Data-Model 1](https://github.com/RoquetteTenreiro/AbeceraSL-PTQ2022-012681-CropCloudAnalytics-Potato/blob/main/CropCloudAnalytics/Star%20Model%201%20-%20CropCloudAnalytics.jpg)
+
 
 **DAX Measures for CropCloudAnalytics**
 
