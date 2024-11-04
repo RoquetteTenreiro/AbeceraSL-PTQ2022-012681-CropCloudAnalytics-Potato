@@ -759,6 +759,7 @@ Once the entire ETL process is completed in the Query section, we load all the t
 The following DAX scripts contain various functions developed for CropCloudAnalytics. These measures encompass aspects such as biomass production, water consumption attributed to transpiration as inferred by soil water probes, soil water dynamics modeling including hydraulic properties parameterization, field sampling data cleaning and usage, harvest index modeling as a function of soil water content, and accounting analytics including FRC-, TCB-, YTD-metrics, income estimation, cost tracking, and margin decomposition. Additionally, plant counting measures and averaging measures, as well as model error assessments are also included. The following script serves as a reference for these functionalities.
 
 **1. Accumulated Biomass (ton/ha)**
+
 Calculates the total accumulated biomass over time, adjusting for an initial state.
 ```dax
 Accumulated Biomass (ton/ha) = 
@@ -775,6 +776,240 @@ CALCULATE (
     ) + InitialState
 )
 ```
+
+**2. YTD Income**
+
+Estimates year-to-date income based on the yield and a fixed price per unit.
+
+```dax
+YTD Income = 
+VAR precio = 0.28
+RETURN
+    [Tuber Yield (Kg/ha)] * precio
+```
+
+**3. YTD Costs**
+
+Calculates year-to-date costs, converting import to a negative value for cost tracking.
+
+```dax
+YTD Costs = [SUMX Importe / ha] * -1
+```
+
+**4. YTD Margin**
+Computes the year-to-date margin by subtracting costs from income.
+
+```dax
+YTD Margin = [YTD Income]-[YTD Costs]
+```
+
+**5. YTD Margin-to-Income Ratio**
+Determines the ratio of margin to income, providing insight into financial performance.
+
+```dax
+YTD Margin-to-Income Ratio = ([FRC Income] - [FRC Cost]) / [FRC Income]
+```
+
+6. Tuber Yield (Kg/ha)
+
+Calculates the tuber yield per hectare, factoring in biomass and harvest index.
+
+```dax
+Tuber Yield (Kg/ha) = 
+VAR InitialState = 2250
+VAR CurrentDate = MAX('Wiseconn Data'[Date])
+RETURN
+CALCULATE (
+    SUMX(
+        FILTER(
+            ALL('Wiseconn Data'),
+            'Wiseconn Data'[Date] <= CurrentDate
+        ),
+        [Biomass]* [HI]
+    ) + InitialState
+)
+```
+
+**7. Model Error**
+Assesses the model error by comparing accumulated biomass to field sample biomass.
+
+```dax
+Model Error = 
+AVERAGEX(
+    'Field Validation Data Patatas', 
+    IF(
+        NOT(ISBLANK([Field Sample Biomass FM (kg/ha)])),
+        ([Accumulated Biomass (ton/ha)] - [Field Sample Biomass FM (kg/ha)]) / [Field Sample Biomass FM (kg/ha)],
+        BLANK()
+    )
+)
+```
+
+**8. Average Model Error Tuber**
+
+Calculates the average error for tubers based on field samples.
+
+```dax
+Average Model Error Tuber = 
+AVERAGEX(
+    'Wiseconn Data',
+    [Model Error Tuber]
+)
+```
+
+**9. Plant Quantity (#)**
+
+Counts the number of plants based on field validation data.
+
+```dax
+Plant Quantity (#) = 
+SUMX(
+    FILTER(
+        'Field Validation Data Patatas',
+        'Field Validation Data Patatas'[Parameter_code] = "AB"
+    ),
+    'Field Validation Data Patatas'[TQ]
+)
+```
+
+**10. Crop Water Function**
+    
+Models the crop's primary production based on transpiration and other factors.
+
+```dax
+Crop Water Function = 
+AVERAGEX('Crop Water Function', 
+'Crop Water Function'[Y = f (T) [ton/ha/mm]]
+```
+
+**11. Total SUMX Importe / ha**
+
+Calculates the total import per hectare, filtered to exclude blank article names.
+
+```dax
+Total SUMX Importe / ha = 
+CALCULATE(
+    [SUMX Importe] / [SUMX Superficie],
+    NOT ISBLANK('PARTES_ERP'[Nombre Familia Artículo]),
+    ALL('PARTES_ERP'[Nombre Familia Artículo])
+)
+```
+
+**12. Average PWP**
+
+Calculates the average of plant available water capacity (PWP) across different products.
+
+```dax
+Average PWP = 
+AVERAGEX(
+    VALUES('Water Dynamics'[PWP]),
+    CALCULATE(
+        SUM('Water Dynamics'[PWP])
+    )
+)
+```
+
+**13. FRC Income**
+
+Calculates income based on year-to-date figures and the average surface area.
+
+```dax
+FRC Income = [YTD Income] * [AVERAGEX of Superficie_ha]
+```
+
+
+**14. FRC Cost**
+
+Calculates the total costs related to year-to-date figures and average surface area.
+
+```dax
+FRC Cost = ([YTD Costs]) * [AVERAGEX of Superficie_ha]
+```
+
+**15. Fixed Cost Measure**
+
+Calculates fixed costs for each project and campaign by averaging the total costs per hectare.
+
+```dax
+Fixed Cost Measure = 
+CALCULATE (
+    AVERAGEX (
+        SUMMARIZE (
+            ANALITICA_ERP,
+            ANALITICA_ERP[PROYECTO],
+            ANALITICA_ERP[Campaña],
+            "TotalImporte_ha", SUM ( ANALITICA_ERP[Importe_ha] )
+        ),
+        [TotalImporte_ha]
+    ),
+    ALL ( PARTES_ERP[Nombre Familia Artículo] )
+)
+```
+
+
+**16. Field Sample Biomass FM (kg/ha)**
+
+Calculates field sample biomass for fresh matter, adjusting based on plant quantity.
+
+```dax
+Field Sample Biomass FM (kg/ha) = 
+SUMX(
+    FILTER(
+        'Field Validation Data Patatas',
+        'Field Validation Data Patatas'[Parameter_code] = "AB" || 'Field Validation Data Patatas'[Parameter_code] = "RB"
+    ),
+    'Field Validation Data Patatas'[Value]
+) / 1000 * [Plant Quantity (#)] * (10000 / (2*0.7))
+```
+
+**17. Field Sample Tuber FM (kg/ha)**
+
+Calculates field sample tuber fresh matter, applying a correction factor for specific dates.
+
+```dax
+Field Sample Tuber FM (kg/ha) = 
+SUMX(
+    FILTER(
+        'Field Validation Data Patatas',
+        'Field Validation Data Patatas'[Parameter_code] = "TW"
+    ),
+    'Field Validation Data Patatas'[Value]
+) / 1000 * [Plant Quantity (#)] *
+IF(
+    SELECTEDVALUE('Wiseconn Data'[Date]) = DATE(2024, 6, 20),
+    1.5 * (10000 / (2 * 0.7)), 
+    (10000 / (2 * 0.7)) 
+)
+```
+
+**18. Productividad_ha**
+
+Computes productivity per hectare, factoring in the area and product quantities.
+
+```dax
+Productividad_ha = 
+AVERAGEX (
+    VALUES('ANALITICA_ERP'[PROYECTO]),
+    DIVIDE (
+        SUMX (
+            'ANALITICA_ERP',
+            [Cantidad_PRODUCTO]
+        ),
+        CALCULATE (
+            SUMX (
+                'Areas',
+                'Areas'[Superficie_ha]
+            ),
+            ALLEXCEPT('ANALITICA_ERP', 'ANALITICA_ERP'[ID.AREA]),
+            VALUES('ANALITICA_ERP'[ID.AREA])
+        )
+    )
+)
+```
+
+
+
+
 
 ## Notes and Comments
 Include any additional notes, comments, or considerations relevant to the Power Query M source code.
