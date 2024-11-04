@@ -758,6 +758,8 @@ Once the entire ETL process is completed in the Query section, we load all the t
 
 The proposed Star Data Model for CropCloudAnalytics is centered around the ANALITICA_ERP table, sourced directly from the Abecera SL server. This model features a primary fact table, Fact_CropAnalytics, which includes key metrics such as quantity, revenue, and cost, linked to various dimension tables that provide contextual information. These dimensions include Dim_Crop, Dim_Date, Dim_Location, and Dim_Farmer, offering attributes that enable users to slice and analyze data effectively. The Power Query ETL process is employed to extract, transform, and load the data into these tables, ensuring it is clean and structured for analysis. Additionally, DAX measures are implemented for calculating total metrics, gross profit, and averages, facilitating insightful reporting and analytics within the data model. This setup aims to optimize data organization and enhance analytical capabilities in CropCloudAnalytics.
 
+![Star-Data-Model Design](https://github.com/RoquetteTenreiro/AbeceraSL-PTQ2022-012681-CropCloudAnalytics-Potato/blob/main/CropCloudAnalytics/Star%20Model%20Design%20-%20CropCloudAnalytics.png)
+
 ![Star-Data-Model 1](https://github.com/RoquetteTenreiro/AbeceraSL-PTQ2022-012681-CropCloudAnalytics-Potato/blob/main/CropCloudAnalytics/Star%20Model%201%20-%20CropCloudAnalytics.jpg)
 
 ![Star-Data-Model 2](https://github.com/RoquetteTenreiro/AbeceraSL-PTQ2022-012681-CropCloudAnalytics-Potato/blob/main/CropCloudAnalytics/Star%20Model%202%20-%20CropCloudAnalytics.jpg)
